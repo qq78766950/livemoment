@@ -23,6 +23,9 @@ jobs:
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
+        with:
+          # 浅检出在 push --rebase / 强推日志分支时会出岔子，这里要完整历史。
+          fetch-depth: 0
 
       - name: 显示工具链版本
         run: |
@@ -86,29 +89,32 @@ jobs:
             echo "已发布"
           fi
 
-      # 日志下载需要凭据，所以失败时把日志提交回仓库，
-      # 这样不登录也能通过 raw.githubusercontent.com 读到。
-      - name: 把编译日志提交回仓库
+      # 日志下载需要凭据（公开仓库的 jobs/{id}/logs 也要 403），所以失败时把日志
+      # 强推到独立的 ci-logs 分支：强推不受历史分叉影响，而且不登录就能用
+      # raw.githubusercontent.com/<owner>/<repo>/ci-logs/build-error.log 直接读到。
+      # 用 continue-on-error，免得日志步骤自己再挂一次把失败原因盖住。
+      - name: 把编译日志推到 ci-logs 分支
         if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
+        continue-on-error: true
         run: |
+          set -x
           if [ -f build/xcodebuild.log ]; then
-            tail -n 600 build/xcodebuild.log > build-error.log
+            tail -n 800 build/xcodebuild.log > build-error.log
           else
             {
               echo "build/xcodebuild.log 不存在，build 目录内容："
               ls -la build 2>&1 || true
             } > build-error.log
           fi
+          echo "===== 编译错误摘要 ====="
+          grep -n "error:" build-error.log | head -80 || true
+          echo "===== 摘要结束 ====="
           git config user.name "$BOT_NAME"
           git config user.email "$BOT_EMAIL"
-          git add build-error.log
-          if git diff --cached --quiet; then
-            echo "日志没有变化，跳过提交"
-          else
-            git commit -q -m "CI: 提交编译日志供诊断 [skip ci]"
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            git push
-          fi
+          git checkout -B ci-logs
+          git add -f build-error.log
+          git commit -q -m "CI: 编译日志 [skip ci]" || echo "没有新内容可提交"
+          git push -f origin ci-logs
 
       - name: 两次都没编过就报错退出
         if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
