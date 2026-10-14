@@ -11,18 +11,18 @@ struct SettingsView: View {
             Section {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
-                        Text("默认片段长度")
+                        Text("默认输出时长")
                         Spacer()
                         Text(Formatters.duration(defaultClipDuration))
                             .foregroundStyle(.secondary)
                     }
-                    Slider(value: $defaultClipDuration, in: 1.0...3.0, step: 0.1)
+                    Slider(value: $defaultClipDuration, in: 1.0...5.0, step: 0.1)
                 }
                 Toggle("默认保留原声", isOn: $keepAudioByDefault)
             } header: {
                 Text("转换默认值")
             } footer: {
-                Text("每次打开编辑器用这套默认值初始化，进去之后仍然可以单独调整。")
+                Text("每次打开编辑器用这套默认值初始化，进去之后仍然可以单独调整。这里的时长是「输出时长」，即计入倍速之后的结果；超过 3 秒的部分第三方 App 可能把实况照片当普通视频。")
             }
 
             Section {
@@ -43,7 +43,9 @@ struct SettingsView: View {
             Section {
                 LabeledContent("输出编码", value: "HEVC (H.265) / MOV")
                 LabeledContent("配对方式", value: "Content Identifier")
-                LabeledContent("片段上限", value: "3.0 秒")
+                LabeledContent("输出时长", value: "0.5 ～ 5.0 秒")
+                LabeledContent("源片段上限", value: "20 秒内，且随倍速浮动")
+                LabeledContent("播放速度", value: "0.5× ～ 2×")
                 LabeledContent("最低系统", value: "iOS 17.0")
             } header: {
                 Text("技术参数")
