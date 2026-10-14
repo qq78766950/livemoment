@@ -40,6 +40,9 @@ final class CameraRecorder: NSObject, ObservableObject {
     // MARK: - 权限
 
     /// 请求摄像头与麦克风权限。麦克风被拒不算致命——只是录出来没有声音。
+    ///
+    /// 必须在 `startRunning()` **之前**调用：系统不会因为会话启动而自动弹窗，
+    /// 没权限的话预览是黑的、录出来是空文件，还不报错，很难查。
     static func requestAccess() async -> (camera: Bool, microphone: Bool) {
         let camera = await withCheckedContinuation { (continuation: CheckedContinuation<Bool, Never>) in
             AVCaptureDevice.requestAccess(for: .video) { continuation.resume(returning: $0) }
@@ -52,10 +55,32 @@ final class CameraRecorder: NSObject, ObservableObject {
 
     // MARK: - 生命周期
 
-    func start() {
+    /// 先要权限再开会话，界面不用自己拼这两步的顺序。
+    ///
+    /// 麦克风没授权时不会挂音轨——避免留一条永远没数据的轨把整段录制成空文件。
+    ///
+    /// - Returns: 摄像头与麦克风的授权结果，界面据此决定要不要提示。
+    ///
+    /// 标 `@MainActor`：`await` 之后会落到后台线程，而 `errorMessage` 是
+    /// `@Published`，必须回主线程改，否则运行时会警告「Publishing changes from
+    /// background threads is not allowed」。
+    @MainActor
+    @discardableResult
+    func startAfterRequestingAccess() async -> (camera: Bool, microphone: Bool) {
+        let granted = await Self.requestAccess()
+        guard granted.camera else {
+            errorMessage = "没有相机权限。请到「设置 → 隐私与安全性 → 相机」里允许「实况录影」，再回来拍摄。"
+            return granted
+        }
+        errorMessage = nil
+        start(audioAllowed: granted.microphone)
+        return granted
+    }
+
+    func start(audioAllowed: Bool = true) {
         queue.async { [weak self] in
             guard let self else { return }
-            guard self.configureIfNeeded() else { return }
+            guard self.configureIfNeeded(audioAllowed: audioAllowed) else { return }
             if !self.session.isRunning {
                 self.session.startRunning()
             }
@@ -168,8 +193,9 @@ final class CameraRecorder: NSObject, ObservableObject {
 
     // MARK: - 配置
 
+    /// - Parameter audioAllowed: 麦克风没授权时传 false，就不挂音轨。
     /// - Returns: 配置是否可用（拿到摄像头）。
-    private func configureIfNeeded() -> Bool {
+    private func configureIfNeeded(audioAllowed: Bool) -> Bool {
         if isConfigured { return true }
 
         session.beginConfiguration()
@@ -186,8 +212,9 @@ final class CameraRecorder: NSObject, ObservableObject {
         }
         session.addInput(videoInput)
 
-        // 麦克风拿不到也不阻断拍摄，只是成片没有声音
-        if let audioDevice = AVCaptureDevice.default(for: .audio),
+        // 麦克风没授权或拿不到，都不阻断拍摄，只是成片没有声音
+        if audioAllowed,
+           let audioDevice = AVCaptureDevice.default(for: .audio),
            let audioInput = try? AVCaptureDeviceInput(device: audioDevice),
            session.canAddInput(audioInput) {
             session.addInput(audioInput)

@@ -53,6 +53,8 @@ struct CameraCaptureView: View {
 
     @StateObject private var recorder = CameraRecorder()
     @State private var rotationAngle: CGFloat = 90
+    /// 麦克风被拒时给一句不打扰的说明，而不是弹窗拦人。
+    @State private var audioDenied = false
 
     var body: some View {
         ZStack {
@@ -80,7 +82,7 @@ struct CameraCaptureView: View {
         .statusBarHidden(false)
         .onAppear {
             UIDevice.current.beginGeneratingDeviceOrientationNotifications()
-            recorder.start()
+            Task { await startCamera() }
         }
         .onDisappear {
             UIDevice.current.endGeneratingDeviceOrientationNotifications()
@@ -102,6 +104,17 @@ struct CameraCaptureView: View {
         } message: {
             Text(recorder.errorMessage ?? "")
         }
+    }
+
+    /// 先要权限，再开会话。
+    ///
+    /// 顺序不能反：系统不会因为 `startRunning()` 而自动弹权限窗，
+    /// 没权限时预览是黑的、录出来是空文件，还不报错。
+    /// 麦克风被拒不拦人，只是录出来没声音，所以只挂一句提示。
+    @MainActor
+    private func startCamera() async {
+        let granted = await recorder.startAfterRequestingAccess()
+        audioDenied = granted.camera && !granted.microphone
     }
 
     // MARK: - 顶部
@@ -155,16 +168,26 @@ struct CameraCaptureView: View {
     // MARK: - 提示
 
     private var hint: some View {
-        Text("建议拍 2～3 秒。录完会进入编辑器，可以拖选区、调快慢，再生成实况照片。")
-            .font(.caption)
-            .foregroundStyle(.white.opacity(0.85))
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .padding(.horizontal, 24)
-            .padding(.bottom, 14)
+        VStack(spacing: 6) {
+            Text("建议拍 2～3 秒。录完会进入编辑器，可以拖选区、调快慢，再生成实况照片。")
+                .font(.caption)
+                .foregroundStyle(.white.opacity(0.85))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if audioDenied {
+                Text("麦克风没授权，这段会录成无声的。要带声音请到「设置 → 隐私与安全性 → 麦克风」里允许。")
+                    .font(.caption2)
+                    .foregroundStyle(.orange.opacity(0.95))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .padding(.horizontal, 24)
+        .padding(.bottom, 14)
     }
 
     // MARK: - 底部控件
