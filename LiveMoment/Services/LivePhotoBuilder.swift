@@ -260,7 +260,7 @@ final class LivePhotoBuilder {
         to outputURL: URL
     ) async throws -> WrittenMovie {
         let asset = AVURLAsset(
-            sourceURL: sourceURL,
+            url: sourceURL,
             options: [AVURLAssetPreferPreciseDurationAndTimingKey: true]
         )
         let composition = AVMutableComposition()

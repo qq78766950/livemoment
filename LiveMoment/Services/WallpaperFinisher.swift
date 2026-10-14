@@ -55,27 +55,11 @@ enum WallpaperFinisher {
         let manager = FileManager.default
         try? manager.removeItem(at: outputURL)
 
-        // MARK: 读取端（原样取压缩样本）
-
-        let reader = try AVAssetReader(asset: asset)
-        let videoOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
-        videoOutput.alwaysCopiesSampleData = false
-        guard reader.canAdd(videoOutput) else {
-            throw LivePhotoError.exportFailed("无法读取导出的视频轨")
-        }
-        reader.add(videoOutput)
-
-        var audioOutput: AVAssetReaderTrackOutput?
-        if let audioTrack {
-            let output = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: nil)
-            output.alwaysCopiesSampleData = false
-            if reader.canAdd(output) {
-                reader.add(output)
-                audioOutput = output
-            }
-        }
-
         // MARK: 写入端
+        //
+        // 顺序上先建写入端、再建读取端：`AVAssetReader` 没有「移除输出轨」的 API
+        // （只有 canAdd / add），一旦加进去就撤不回来。所以必须先问清楚写入端
+        // 收不收这条音轨，收不下就干脆不往读取端加，省得读出来没地方放。
 
         let writer = try AVAssetWriter(outputURL: outputURL, fileType: .mov)
 
@@ -89,14 +73,12 @@ enum WallpaperFinisher {
         writer.add(videoInput)
 
         var audioInput: AVAssetWriterInput?
-        if let audioOutput {
+        if audioTrack != nil {
             let input = AVAssetWriterInput(mediaType: .audio, outputSettings: nil)
             input.expectsMediaDataInRealTime = false
             if writer.canAdd(input) {
                 writer.add(input)
                 audioInput = input
-            } else {
-                reader.remove(audioOutput)
             }
         }
 
@@ -116,6 +98,27 @@ enum WallpaperFinisher {
         // 重封装不会继承 moov/meta，配对标识与壁纸字段必须重新写一遍
         writer.metadata = metadata
 
+        // MARK: 读取端（原样取压缩样本）
+
+        let reader = try AVAssetReader(asset: asset)
+        let videoOutput = AVAssetReaderTrackOutput(track: videoTrack, outputSettings: nil)
+        videoOutput.alwaysCopiesSampleData = false
+        guard reader.canAdd(videoOutput) else {
+            throw LivePhotoError.exportFailed("无法读取导出的视频轨")
+        }
+        reader.add(videoOutput)
+
+        // 只有写入端收下了音轨，才把对应的读取轨接上
+        var audioOutput: AVAssetReaderTrackOutput?
+        if let audioTrack, audioInput != nil {
+            let output = AVAssetReaderTrackOutput(track: audioTrack, outputSettings: nil)
+            output.alwaysCopiesSampleData = false
+            if reader.canAdd(output) {
+                reader.add(output)
+                audioOutput = output
+            }
+        }
+
         guard writer.startWriting() else {
             throw LivePhotoError.exportFailed(writer.error?.localizedDescription ?? "重封装无法开始")
         }
@@ -124,25 +127,6 @@ enum WallpaperFinisher {
             throw LivePhotoError.exportFailed(reader.error?.localizedDescription ?? "无法读取导出的视频")
         }
         writer.startSession(atSourceTime: .zero)
-
-        // MARK: 写入封面帧标记
-
-        var stillTimeWritten = false
-        if let adaptor, let metadataInput {
-            let item = AVMutableMetadataItem()
-            item.identifier = AVMetadataIdentifier(rawValue: "mdta/com.apple.quicktime.still-image-time")
-            item.keySpace = .quickTimeMetadata
-            item.value = NSNumber(value: Int8(0))
-            item.dataType = "com.apple.metadata.datatype.int8"
-
-            let start = CMTime(seconds: max(0, stillTime), preferredTimescale: targetTimeScale)
-            let group = AVTimedMetadataGroup(
-                items: [item],
-                timeRange: CMTimeRange(start: start, duration: CMTime(value: 1, timescale: targetTimeScale))
-            )
-            stillTimeWritten = metadataInput.isReadyForMoreMediaData && adaptor.append(group)
-            metadataInput.markAsFinished()
-        }
 
         // MARK: 搬运样本
         //
@@ -159,6 +143,35 @@ enum WallpaperFinisher {
             if let audioInput, let audioOutput {
                 pump(output: audioOutput, input: audioInput, queue: pumpQueue, retime: false, completion: finish)
             }
+        }
+
+        // MARK: 写入封面帧标记
+        //
+        // 必须放在所有视频/音频样本**搬完之后**。封面帧标记的时间戳落在片段靠后的位置
+        // （壁纸模式固定在最后一帧附近），先写它再写从 0 开始的视频样本，时间轴就倒退了，
+        // 写入器会直接判为乱序而失败。放到最后写，时间戳天然是递增的。
+        var stillTimeWritten = false
+        if let adaptor, let metadataInput {
+            let item = AVMutableMetadataItem()
+            item.identifier = AVMetadataIdentifier(rawValue: "mdta/com.apple.quicktime.still-image-time")
+            item.keySpace = .quickTimeMetadata
+            item.value = NSNumber(value: Int8(0))
+            item.dataType = "com.apple.metadata.datatype.int8"
+
+            let start = CMTime(seconds: max(0, stillTime), preferredTimescale: targetTimeScale)
+            let group = AVTimedMetadataGroup(
+                items: [item],
+                timeRange: CMTimeRange(start: start, duration: CMTime(value: 1, timescale: targetTimeScale))
+            )
+
+            // 别的轨刚搬完，这一条可能还没从上一次状态里缓过来，短等一下再写
+            var waited = 0
+            while !metadataInput.isReadyForMoreMediaData && waited < 100 {
+                try? await Task.sleep(nanoseconds: 10_000_000)
+                waited += 1
+            }
+            stillTimeWritten = metadataInput.isReadyForMoreMediaData && adaptor.append(group)
+            metadataInput.markAsFinished()
         }
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
