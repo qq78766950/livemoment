@@ -1,0 +1,200 @@
+import Photos
+import SwiftUI
+import UIKit
+
+struct ResultView: View {
+    let result: BuiltLivePhoto
+    let libraryIdentifier: String?
+
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var livePhoto: PHLivePhoto?
+    @State private var staticImage: UIImage?
+    @State private var statusText = "正在准备预览…"
+    @State private var exportedFolder: URL?
+    @State private var exportError: String?
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 14) {
+                previewCard
+                specCard
+                exportCard
+            }
+            .padding(16)
+        }
+        .background(Color(.systemGroupedBackground))
+        .navigationTitle("生成完成")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("完成") { dismiss() }
+            }
+        }
+        .task { await loadPreview() }
+        .alert("导出失败", isPresented: exportErrorBinding) {
+            Button("知道了", role: .cancel) { exportError = nil }
+        } message: {
+            Text(exportError ?? "")
+        }
+    }
+
+    // MARK: - 预览
+
+    private var previewCard: some View {
+        VStack(spacing: 10) {
+            ZStack {
+                Color.black
+                if let livePhoto {
+                    LivePhotoPreviewView(livePhoto: livePhoto)
+                        .padding(6)
+                } else if let staticImage {
+                    Image(uiImage: staticImage)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .padding(6)
+                } else {
+                    ProgressView().tint(.white)
+                }
+
+                VStack {
+                    Spacer()
+                    HStack(spacing: 5) {
+                        Image(systemName: "livephoto").font(.caption2)
+                        Text("实况").font(.caption2)
+                    }
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.black.opacity(0.45), in: Capsule())
+                    .foregroundStyle(.white)
+                    .padding(10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: 360)
+            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+
+            Text(statusText)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - 规格
+
+    private var specCard: some View {
+        Card(title: "这张实况照片", systemImage: "info.circle") {
+            LabeledContent("分辨率", value: result.resolutionText)
+            LabeledContent("动态时长", value: Formatters.duration(result.duration))
+            LabeledContent("视频体积", value: result.fileSizeText)
+            LabeledContent("编码格式", value: "HEVC (H.265) / MOV")
+            LabeledContent("配对标识") {
+                Text(result.identifier.prefix(8) + "…")
+                    .font(.footnote.monospaced())
+                    .foregroundStyle(.secondary)
+            }
+            LabeledContent("相册状态") {
+                if libraryIdentifier != nil {
+                    Label("已保存", systemImage: "checkmark.circle.fill")
+                        .labelStyle(.titleAndIcon)
+                        .font(.footnote)
+                        .foregroundStyle(.green)
+                } else {
+                    Text("未保存").font(.footnote).foregroundStyle(.orange)
+                }
+            }
+        }
+    }
+
+    // MARK: - 导出
+
+    private var exportCard: some View {
+        Card(title: "分享到别的设备", systemImage: "square.and.arrow.up") {
+            Text("实况照片在磁盘上是「一张 JPG + 一段 MOV」两个文件，靠配对标识绑定。AirDrop、iCloud 云盘这类通道能保住配对关系。微信、QQ 会剥掉元数据，发过去会散成两个独立文件。")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if let exportedFolder {
+                ShareLink(item: exportedFolder) {
+                    Label("分享配对文件", systemImage: "square.and.arrow.up")
+                }
+                .buttonStyle(.borderedProminent)
+
+                Text("已存到「文件 → 我的 iPhone → 实况录影 → \(exportedFolder.lastPathComponent)」")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Button {
+                    exportPair()
+                } label: {
+                    Label("保存配对文件到「文件」App", systemImage: "folder.badge.plus")
+                }
+                .buttonStyle(.bordered)
+            }
+
+            Divider()
+
+            Button {
+                dismiss()
+            } label: {
+                Label("再做一个", systemImage: "arrow.counterclockwise")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    // MARK: - 数据
+
+    private var exportErrorBinding: Binding<Bool> {
+        Binding(
+            get: { exportError != nil },
+            set: { if !$0 { exportError = nil } }
+        )
+    }
+
+    private func loadPreview() async {
+        if staticImage == nil {
+            staticImage = UIImage(contentsOfFile: result.photoURL.path)
+        }
+
+        // 从本地文件对构建 PHLivePhoto：文件里的配对标识齐全，这一步是确定性的。
+        // 相册里的那份由系统自己管理，用户去「照片」App 就能看到。
+        if let photo = await requestFromFiles() {
+            livePhoto = photo
+            statusText = "长按画面即可播放动态与声音。"
+        } else if libraryIdentifier != nil {
+            statusText = "照片已保存到相册，请到「照片」App 里长按播放。"
+        } else {
+            statusText = "已生成文件，但当前设备无法预览实况效果。"
+        }
+    }
+
+    private func requestFromFiles() async -> PHLivePhoto? {
+        await withCheckedContinuation { continuation in
+            let once = OnceBox()
+            let size = CGSize(width: 1400, height: 1400)
+            PHLivePhoto.request(
+                withResourceFileURLs: [result.photoURL, result.videoURL],
+                placeholderImage: staticImage,
+                targetSize: size,
+                contentMode: .aspectFit
+            ) { photo, _ in
+                guard once.claim() else { return }
+                continuation.resume(returning: photo)
+            }
+        }
+    }
+
+    private func exportPair() {
+        do {
+            exportedFolder = try ExportService.exportPair(result, baseName: ExportService.makeBaseName())
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+}

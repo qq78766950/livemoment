@@ -1,0 +1,15 @@
+# Xcode / 构建产物
+build/
+DerivedData/
+*.xcarchive
+*.ipa
+*.dSYM.zip
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+
+# XcodeGen 生成的工程（如果决定用 project.yml 作为唯一来源，可以把下面这行取消注释）
+# LiveMoment.xcodeproj/
+
+# macOS
+.DS_Store

@@ -1,0 +1,65 @@
+name: 构建未签名 IPA
+
+# 手动触发，或推到 main 时自动跑。
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+
+jobs:
+  build:
+    name: 云端编译（macOS runner）
+    runs-on: macos-15
+    timeout-minutes: 45
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 显示工具链版本
+        run: |
+          sw_vers
+          echo "---"
+          xcode-select -p
+          xcodebuild -version
+
+      # 主路径：直接编译仓库里的 LiveMoment.xcodeproj
+      - name: 编译并打包 IPA
+        id: direct
+        continue-on-error: true
+        run: |
+          bash scripts/build_ipa.sh
+          ls -la build/*.ipa
+
+      # 兜底：如果仓库里这份 pbxproj 在 runner 的 Xcode 上打不开（工程格式版本不兼容），
+      # 就用 XcodeGen 从 project.yml 重新生成一份再编。
+      - name: 兜底编译（XcodeGen 重新生成工程）
+        id: fallback
+        if: steps.direct.outcome == 'failure'
+        continue-on-error: true
+        run: |
+          brew install xcodegen
+          rm -rf LiveMoment.xcodeproj
+          xcodegen generate
+          bash scripts/build_ipa.sh
+          ls -la build/*.ipa
+
+      - name: 编译日志（失败时留档）
+        if: steps.direct.outcome == 'failure'
+        run: |
+          echo "===== xcodebuild.log 末尾 200 行 ====="
+          tail -n 200 build/xcodebuild.log || true
+
+      - name: 上传 IPA
+        if: steps.direct.outcome == 'success' || steps.fallback.outcome == 'success'
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveMoment-unsigned-ipa
+          path: build/*.ipa
+          retention-days: 30
+
+      - name: 两次都没编过就报错退出
+        if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
+        run: |
+          echo "::error::两次编译都失败了，请看上面的日志。把错误贴给我，我来修。"
+          exit 1
