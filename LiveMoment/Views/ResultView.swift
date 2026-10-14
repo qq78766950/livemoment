@@ -89,6 +89,9 @@ struct ResultView: View {
         Card(title: "这张实况照片", systemImage: "info.circle") {
             LabeledContent("分辨率", value: result.resolutionText)
             LabeledContent("动态时长", value: Formatters.duration(result.duration))
+            if result.isRetimed {
+                LabeledContent("播放速度", value: "\(Formatters.speed(result.speed))（源片段 \(Formatters.duration(result.sourceDuration))）")
+            }
             LabeledContent("视频体积", value: result.fileSizeText)
             LabeledContent("编码格式", value: "HEVC (H.265) / MOV")
             LabeledContent("配对标识") {

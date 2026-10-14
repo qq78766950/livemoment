@@ -17,7 +17,12 @@ struct BuiltLivePhoto: Identifiable, Hashable {
     /// 动态部分（HEVC / MOV）。
     let videoURL: URL
     let pixelSize: CGSize
+    /// 成品动态时长（已计入变速）。
     let duration: Double
+    /// 成品使用的播放倍速。
+    let speed: Double
+    /// 变速前截取的源片段长度。
+    let sourceDuration: Double
     let videoFileSize: Int
 
     var id: String { identifier }
@@ -27,6 +32,9 @@ struct BuiltLivePhoto: Identifiable, Hashable {
     }
 
     var fileSizeText: String { Formatters.fileSize(videoFileSize) }
+
+    /// 只有真正变速过才值得在结果页单独列一行。
+    var isRetimed: Bool { abs(speed - 1.0) > 0.001 }
 }
 
 enum LivePhotoError: LocalizedError {
@@ -67,6 +75,10 @@ enum LivePhotoError: LocalizedError {
 ///
 /// 保存到相册时之所以还能用 PHAssetCreationRequest 直接配对，是因为 iOS 会读取
 /// 这两个文件里的标识自行完成绑定，所以这一步不能省。
+///
+/// 变速的处理方式和播放器不同：预览阶段靠 `AVPlayer.rate`，
+/// 而成品必须把时间轴真正改写掉，所以这里走 `scaleTimeRange`，
+/// 再配一条 `audioTimePitchAlgorithm = .spectral` 的音频轨做到变速不变调。
 final class LivePhotoBuilder {
     static let shared = LivePhotoBuilder()
 
@@ -102,9 +114,9 @@ final class LivePhotoBuilder {
         let photoURL = folder.appendingPathComponent("LiveMoment.JPG")
         try writeStillImage(cover, identifier: identifier, to: photoURL)
 
-        // 2) 裁剪 + 转码为 HEVC / MOV，并写入同一个配对标识。
+        // 2) 裁剪 + 变速 + 转码为 HEVC / MOV，并写入同一个配对标识。
         let videoURL = folder.appendingPathComponent("LiveMoment.MOV")
-        try await exportMovie(
+        let written = try await exportMovie(
             sourceURL: sourceURL,
             selection: selection,
             keepAudio: keepAudio,
@@ -120,7 +132,9 @@ final class LivePhotoBuilder {
             photoURL: photoURL,
             videoURL: videoURL,
             pixelSize: CGSize(width: cover.width, height: cover.height),
-            duration: selection.duration,
+            duration: written.outputDuration,
+            speed: written.speed,
+            sourceDuration: written.sourceDuration,
             videoFileSize: videoSize
         )
     }
@@ -178,7 +192,14 @@ final class LivePhotoBuilder {
         }
     }
 
-    // MARK: - 视频裁剪 + 转码（含 QuickTime 元数据）
+    // MARK: - 视频裁剪 + 变速 + 转码（含 QuickTime 元数据）
+
+    /// 实际写进文件的时长参数，回传给调用方填进结果对象。
+    private struct WrittenMovie {
+        let sourceDuration: Double
+        let outputDuration: Double
+        let speed: Double
+    }
 
     private func exportMovie(
         sourceURL: URL,
@@ -186,7 +207,7 @@ final class LivePhotoBuilder {
         keepAudio: Bool,
         identifier: String,
         to outputURL: URL
-    ) async throws {
+    ) async throws -> WrittenMovie {
         let asset = AVURLAsset(
             url: sourceURL,
             options: [AVURLAssetPreferPreciseDurationAndTimingKey: true]
@@ -196,6 +217,20 @@ final class LivePhotoBuilder {
         guard let sourceVideo = try await asset.loadTracks(withMediaType: .video).first else {
             throw LivePhotoError.noVideoTrack
         }
+
+        // 选区理论上一定落在素材内，但时长元数据偶尔比实际可解码内容长一点，
+        // 这里再夹一次，避免 insertTimeRange 直接抛错把整个转换带崩。
+        let assetSeconds = try await asset.load(.duration).seconds
+        let range: CMTimeRange
+        if assetSeconds.isFinite, assetSeconds > 0 {
+            range = selection.timeRange.intersection(
+                CMTimeRange(start: .zero, duration: CMTime(seconds: assetSeconds, preferredTimescale: 600))
+            )
+        } else {
+            range = selection.timeRange
+        }
+        guard range.duration.seconds > 0.05 else { throw LivePhotoError.noVideoTrack }
+
         guard let videoTrack = composition.addMutableTrack(
             withMediaType: .video,
             preferredTrackID: kCMPersistentTrackID_Invalid
@@ -203,18 +238,39 @@ final class LivePhotoBuilder {
             throw LivePhotoError.noVideoTrack
         }
 
-        let range = selection.timeRange
         try videoTrack.insertTimeRange(range, of: sourceVideo, at: .zero)
         // 旋转信息必须带到合成轨上，否则竖屏素材会被压成横向
         videoTrack.preferredTransform = try await sourceVideo.load(.preferredTransform)
 
+        var audioTrack: AVMutableCompositionTrack?
         if keepAudio,
            let sourceAudio = try await asset.loadTracks(withMediaType: .audio).first,
-           let audioTrack = composition.addMutableTrack(
+           let track = composition.addMutableTrack(
                withMediaType: .audio,
                preferredTrackID: kCMPersistentTrackID_Invalid
            ) {
-            try? audioTrack.insertTimeRange(range, of: sourceAudio, at: .zero)
+            try? track.insertTimeRange(range, of: sourceAudio, at: .zero)
+            if track.timeRange.duration.seconds > 0.01 {
+                audioTrack = track
+            }
+        }
+
+        // MARK: 变速
+        //
+        // scaleTimeRange 把「时间轴上的这一段」压缩或拉伸到目标长度，
+        // 也就是把 30 fps 的 6 秒素材变成 60 fps 等效的 3 秒，而不是丢帧。
+        // 合成轨不会自动继承这个变换，视频轨和音频轨都得单独调用一次。
+        let factor = ClipSelection.normalizedSpeed(selection.speed)
+        let isRetimed = abs(factor - 1.0) > 0.001
+        let targetDuration = CMTime(seconds: selection.outputDuration, preferredTimescale: 600)
+
+        if isRetimed {
+            if videoTrack.timeRange.duration.seconds > 0.01 {
+                videoTrack.scaleTimeRange(videoTrack.timeRange, toDuration: targetDuration)
+            }
+            if let audioTrack, audioTrack.timeRange.duration.seconds > 0.01 {
+                audioTrack.scaleTimeRange(audioTrack.timeRange, toDuration: targetDuration)
+            }
         }
 
         // 优先 HEVC（实况照片的推荐编码），拿不到会话就退回 H.264
@@ -229,6 +285,10 @@ final class LivePhotoBuilder {
         session.outputFileType = .mov
         session.shouldOptimizeForNetworkUse = false
         session.metadata = [Self.contentIdentifierItem(identifier)]
+        // 变速时开启频谱相位声码器，慢放不闷、快放不尖
+        if isRetimed {
+            session.audioMix = Self.pitchPreservingMix(for: audioTrack)
+        }
 
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             session.exportAsynchronously {
@@ -238,12 +298,27 @@ final class LivePhotoBuilder {
 
         switch session.status {
         case .completed:
-            return
+            return WrittenMovie(
+                sourceDuration: range.duration.seconds,
+                outputDuration: selection.outputDuration,
+                speed: factor
+            )
         case .cancelled:
             throw CancellationError()
         default:
             throw LivePhotoError.exportFailed(session.error?.localizedDescription ?? "未知错误")
         }
+    }
+
+    /// 变速不变调：不挂这个的话，2× 快放会变成尖细的“花栗鼠音”，
+    /// 0.5× 慢放会变成沉闷的“怪兽音”。
+    private static func pitchPreservingMix(for track: AVMutableCompositionTrack?) -> AVAudioMix? {
+        guard let track else { return nil }
+        let parameters = AVMutableAudioMixInputParameters(track: track)
+        parameters.audioTimePitchAlgorithm = .spectral
+        let mix = AVMutableAudioMix()
+        mix.inputParameters = [parameters]
+        return mix
     }
 
     /// 构造 `com.apple.quicktime.content.identifier` 元数据项。

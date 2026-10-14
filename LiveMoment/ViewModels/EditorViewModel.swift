@@ -37,6 +37,8 @@ final class EditorViewModel: ObservableObject {
     /// 封面帧相对选区起点的偏移，让用户可以在一段动态里挑选最好看的一帧。
     @Published var coverOffset: Double = 0
     @Published var keepAudio = true
+    /// 用户是否手动改过倍速——改过之后就不再跟着默认值走。
+    @Published private(set) var isRetimed = false
 
     @Published private(set) var coverPreview: UIImage? = nil
     @Published private(set) var phase: Phase = .idle
@@ -66,6 +68,22 @@ final class EditorViewModel: ObservableObject {
         "\(Formatters.timecode(selection.start)) → \(Formatters.timecode(selection.end))"
     }
 
+    /// 本次输出的动态时长（已计入倍速）。
+    var outputDuration: Double { selection.outputDuration }
+
+    /// 当前倍速下源片段的长度上限，时间轴手柄要按它来夹取。
+    var sourceLimit: Double { selection.sourceLimit }
+
+    /// 输出超过系统原生实况照片的 3 秒惯例时，给用户一句提醒。
+    var exceedsNativeDuration: Bool {
+        outputDuration > ClipSelection.nativeDuration + 0.01
+    }
+
+    /// 「源 4.0 秒 → 输出 2.0 秒」这类摘要，编辑器和结果页共用同一套口径。
+    var durationSummary: String {
+        "源 \(Formatters.duration(selection.duration)) → 输出 \(Formatters.duration(outputDuration))"
+    }
+
     // MARK: - 装载
 
     func prepare(url: URL, defaultDuration: Double, keepAudioByDefault: Bool) async {
@@ -75,10 +93,12 @@ final class EditorViewModel: ObservableObject {
             info = loaded
             keepAudio = keepAudioByDefault && loaded.hasAudio
             selection = .centered(totalDuration: loaded.duration, preferred: defaultDuration)
+            isRetimed = false
             coverOffset = 0
 
             player.load(url: url)
             player.setMuted(!keepAudio)
+            player.setRate(1.0)
             player.updateRange(selection.timeRange)
 
             refreshCover()
@@ -99,13 +119,74 @@ final class EditorViewModel: ObservableObject {
 
     func selectionDidChange() {
         let clamped = selection.clamped(totalDuration: info?.duration ?? selection.duration)
+        // 预览播放器跟着选区的倍速走，用户不用点生成就能看到快放/慢放的实际观感
+        player.setRate(Float(clamped.speed))
         if clamped != selection {
             selection = clamped
+            // 赋值会再次触发 onChange，交给下一轮跑完整流程，避免半套状态
             return
         }
         coverOffset = min(coverOffset, max(0, selection.duration - 0.05))
         player.updateRange(selection.timeRange, seekToStart: false)
         refreshCover()
+    }
+
+    /// 调整播放倍速。**保持源片段不变**，让输出时长随之变化——
+    /// 用户调倍速时心里想的是「这段动作太快/太慢」，而不是总时长。
+    func setSpeed(_ value: Double) {
+        var next = selection
+        next.speed = ClipSelection.normalizedSpeed(value)
+        guard next.speed != selection.speed else { return }
+        isRetimed = abs(next.speed - 1.0) > 0.001
+        selection = next.clamped(totalDuration: info?.duration ?? next.duration)
+        previewSelection()
+    }
+
+    /// 按目标输出时长反推源片段长度（起点不变，尽量往后取）。
+    func setOutputDuration(_ target: Double) {
+        guard let info else { return }
+        selection = selection.resized(toOutputDuration: target, totalDuration: info.duration)
+        previewSelection()
+    }
+
+    /// 微调输出时长，步进 0.1 秒。
+    func nudgeOutputDuration(by delta: Double) {
+        guard let info else { return }
+        selection = selection.nudgingOutputDuration(by: delta, totalDuration: info.duration)
+    }
+
+    /// 这个目标输出时长在当前倍速下是否够素材可截。
+    func canReach(outputDuration target: Double, in info: VideoInfo) -> Bool {
+        target * ClipSelection.normalizedSpeed(selection.speed) <= info.duration + 0.05
+    }
+
+    // MARK: - 预览
+
+    /// 从头循环播放当前选区。
+    func previewSelection() {
+        player.updateRange(selection.timeRange)
+        player.replayRange()
+    }
+
+    /// 拖动时间轴时的即时预览：先暂停，再低延迟跟随。
+    ///
+    /// 这是「边选边看」的关键——拖动过程中播放器停在目标帧上，
+    /// 用户能直接看到边界落在哪一帧，而不是松手之后才播。
+    func previewFrame(at sourceTime: Double) {
+        player.scrub(to: clampedSourceTime(sourceTime), minimumDelta: 0.03)
+    }
+
+    /// 松手后的精确落点：低延迟 seek 会吸附到关键帧附近，
+    /// 结束时补一次零容差 seek，保证预览到的就是想截的那一帧。
+    func settleFrame(at sourceTime: Double) {
+        player.pause()
+        player.seek(to: clampedSourceTime(sourceTime), precise: true)
+    }
+
+    private func clampedSourceTime(_ value: Double) -> Double {
+        let upper = info?.duration ?? value
+        guard value.isFinite else { return 0 }
+        return min(max(value, 0), max(upper, 0))
     }
 
     func setKeepAudio(_ value: Bool) {

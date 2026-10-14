@@ -3,18 +3,35 @@ import UIKit
 
 /// 时间轴片段选择器：底图是均匀抽帧的缩略图，两侧手柄拖动调整区间。
 ///
-/// 上限锁在 3 秒，因为实况照片本来就是「按下快门前后的 1.5 秒」，
-/// 超过这个长度的片段在相册里播放会显得很奇怪。
+/// 三种操作：
+/// - 拖左手柄 = 改起点（选区尾部不动）
+/// - 拖右手柄 = 改终点（选区头部不动）
+/// - 拖选区中间 = 整段平移，用来在长视频里挪位置
+///
+/// 拖动过程中会通过 `onScrub` 把当前边界对应的时间回调出去，
+/// 让播放器即时跳到那一帧——这就是「边选边看」，不用等松手才播。
+///
+/// 长度上限由外部传入（`maxSourceDuration`），因为它是**随倍速变化的**：
+/// 2× 快放时 5 秒的输出能装下 10 秒素材，1× 时只能装 5 秒。
 struct TimelineSelectorView: View {
     let thumbnails: [UIImage]
     let totalDuration: Double
+    /// 当前倍速下源片段允许的最大长度。
+    let maxSourceDuration: Double
     @Binding var selection: ClipSelection
     var playhead: Double = 0
+    /// 拖动中回调，参数是边界在源视频上的秒数。
+    var onScrub: (Double) -> Void = { _ in }
+    /// 松手回调，用于做一次精确落点。
+    var onScrubEnded: (Double) -> Void = { _ in }
 
-    @State private var anchor: (start: Double, duration: Double)?
+    @State private var edgeAnchor: (start: Double, duration: Double)?
+    @State private var moveAnchor: Double?
 
     private let trackHeight: CGFloat = 66
     private let handleWidth: CGFloat = 9
+    /// 拖到终点时往回让一帧，避免正好落在选区外导致预览变成下一段的画面。
+    private let frameBackstep = 1.0 / 30.0
 
     var body: some View {
         GeometryReader { geo in
@@ -37,16 +54,26 @@ struct TimelineSelectorView: View {
                     .frame(width: max(0, width - startX - selectionWidth), height: trackHeight)
                     .offset(x: startX + selectionWidth)
 
+                // 选区内部的透明命中区：整段平移。
+                // 放在边框之前、手柄之后被手柄盖住，所以边缘拖拽仍然优先调长度。
+                Color.clear
+                    .frame(width: selectionWidth, height: trackHeight)
+                    .contentShape(Rectangle())
+                    .offset(x: startX)
+                    .gesture(moveGesture(trackWidth: width))
+
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
                     .strokeBorder(Color.accentColor, lineWidth: 3)
                     .frame(width: selectionWidth, height: trackHeight)
                     .offset(x: startX)
+                    .allowsHitTesting(false)
 
                 // 播放头
                 Rectangle()
                     .fill(Color.white.opacity(0.95))
                     .frame(width: 2, height: trackHeight)
                     .offset(x: min(max(playheadX - 1, 0), width - 2))
+                    .allowsHitTesting(false)
 
                 handle(offsetX: startX - handleWidth + 1, isLeading: true, trackWidth: width)
                 handle(offsetX: startX + selectionWidth - 1, isLeading: false, trackWidth: width)
@@ -96,38 +123,78 @@ struct TimelineSelectorView: View {
                 }
             )
             .offset(x: offsetX)
-            .gesture(dragGesture(isLeading: isLeading, trackWidth: trackWidth))
+            .gesture(edgeGesture(isLeading: isLeading, trackWidth: trackWidth))
     }
 
     // MARK: - 拖拽
 
-    private func dragGesture(isLeading: Bool, trackWidth: CGFloat) -> some Gesture {
+    private func secondsPerPoint(trackWidth: CGFloat) -> Double {
+        totalDuration / Double(max(trackWidth, 1))
+    }
+
+    /// 拖动两侧手柄：改变片段长度。
+    private func edgeGesture(isLeading: Bool, trackWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
             .onChanged { value in
                 guard totalDuration > 0.1 else { return }
-                if anchor == nil {
-                    anchor = (selection.start, selection.duration)
+                if edgeAnchor == nil {
+                    edgeAnchor = (selection.start, selection.duration)
                 }
-                guard let anchor else { return }
+                guard let anchor = edgeAnchor else { return }
 
-                let secondsPerPoint = totalDuration / Double(max(trackWidth, 1))
-                let delta = Double(value.translation.width) * secondsPerPoint
+                let delta = Double(value.translation.width) * secondsPerPoint(trackWidth: trackWidth)
+                let limit = max(maxSourceDuration, ClipSelection.minSourceDuration)
 
                 var start = anchor.start
                 var end = anchor.start + anchor.duration
 
                 if isLeading {
-                    start = min(max(0, anchor.start + delta), end - ClipSelection.minDuration)
-                    end = min(end, start + ClipSelection.maxDuration)
+                    start = min(max(0, anchor.start + delta), end - ClipSelection.minSourceDuration)
+                    end = min(end, start + limit)
                 } else {
-                    end = max(min(totalDuration, anchor.start + anchor.duration + delta), start + ClipSelection.minDuration)
-                    start = max(start, end - ClipSelection.maxDuration)
+                    end = max(
+                        min(totalDuration, anchor.start + anchor.duration + delta),
+                        start + ClipSelection.minSourceDuration
+                    )
+                    start = max(start, end - limit)
                 }
 
-                selection = ClipSelection(start: max(0, start), duration: max(ClipSelection.minDuration, end - start))
+                let next = ClipSelection(
+                    start: max(0, start),
+                    duration: max(ClipSelection.minSourceDuration, end - start),
+                    speed: selection.speed
+                )
+                selection = next
+                onScrub(isLeading ? next.start : max(next.start, next.end - frameBackstep))
             }
             .onEnded { _ in
-                anchor = nil
+                edgeAnchor = nil
+                onScrubEnded(isLeading ? selection.start : max(selection.start, selection.end - frameBackstep))
+            }
+    }
+
+    /// 拖动选区主体：整段平移，长度不变。
+    private func moveGesture(trackWidth: CGFloat) -> some Gesture {
+        DragGesture(minimumDistance: 2)
+            .onChanged { value in
+                guard totalDuration > 0.1 else { return }
+                if moveAnchor == nil { moveAnchor = selection.start }
+                guard let base = moveAnchor else { return }
+
+                let delta = Double(value.translation.width) * secondsPerPoint(trackWidth: trackWidth)
+                let maxStart = max(0, totalDuration - selection.duration)
+                let newStart = min(max(0, base + delta), maxStart)
+
+                selection = ClipSelection(
+                    start: newStart,
+                    duration: selection.duration,
+                    speed: selection.speed
+                )
+                onScrub(newStart)
+            }
+            .onEnded { _ in
+                moveAnchor = nil
+                onScrubEnded(selection.start)
             }
     }
 }

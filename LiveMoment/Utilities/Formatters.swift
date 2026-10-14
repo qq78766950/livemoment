@@ -15,6 +15,12 @@ enum Formatters {
         String(format: "%.1f 秒", seconds)
     }
 
+    /// 播放倍速文案：1 → "1×"，1.5 → "1.5×"，0.75 → "0.75×"。
+    static func speed(_ value: Double) -> String {
+        guard value.isFinite, value > 0 else { return "1×" }
+        return String(format: "%g", value) + "×"
+    }
+
     static func fileSize(_ bytes: Int) -> String {
         let formatter = ByteCountFormatter()
         formatter.allowedUnits = [.useMB, .useKB]

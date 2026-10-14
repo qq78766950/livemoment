@@ -81,7 +81,7 @@ struct HomeView: View {
                 .foregroundStyle(Color.accentColor)
             Text("把一段视频变成一张会动的照片")
                 .font(.title3.weight(.semibold))
-            Text("挑一段视频，截出 3 秒以内的片段，选好封面帧，就能生成一张可以按压播放、带声音的实况照片。")
+            Text("挑一段视频，拖手柄截出想要的片段，随手拖拉就能看到画面跳到哪儿；再定好时长、调个快慢，选好封面帧，就能生成一张可以按压播放、带声音的实况照片。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -115,7 +115,9 @@ struct HomeView: View {
 
     private var howItWorks: some View {
         Card(title: "使用提示", systemImage: "lightbulb") {
-            bullet("片段越短越像真的实况照片，1.5～3 秒最自然。")
+            bullet("拖两侧手柄改片段长度，拖选区中间挪位置；拖动过程中画面会跟着跳，选到哪儿看得见。")
+            bullet("0.5×～2× 可调速：想留住更多动作就选长一点 + 快放，6 秒素材开 2× 正好装进 3 秒。")
+            bullet("片段越短越像真的实况照片，1.5～3 秒最自然；超过 3 秒在部分 App 里会被当普通视频。")
             bullet("封面帧建议挑画面最稳、最清楚的那一帧。")
             bullet("生成后可以直接发朋友圈；要传给别的手机请用 AirDrop，微信会剥掉元数据。")
         }
