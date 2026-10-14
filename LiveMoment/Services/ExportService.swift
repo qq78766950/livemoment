@@ -32,9 +32,11 @@ enum ExportService {
                 try manager.removeItem(at: folder)
             }
             try manager.createDirectory(at: folder, withIntermediateDirectories: true)
+            // 主图扩展名跟着实际格式走：可能是 HEIC 也可能是 JPG
             try manager.copyItem(
                 at: result.photoURL,
-                to: folder.appendingPathComponent(baseName).appendingPathExtension("JPG")
+                to: folder.appendingPathComponent(baseName)
+                    .appendingPathExtension(result.stillFormat.fileExtension)
             )
             try manager.copyItem(
                 at: result.videoURL,

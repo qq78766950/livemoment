@@ -8,14 +8,14 @@
 
 ## 环境要求
 
-| 项目 | 要求 |
-|---|---|
-| 系统 | iOS 17.0+ |
-| 工具 | Xcode 16.0+（用了 file-system-synchronized group） |
-| 第三方依赖 | 无（纯系统框架） |
-| 后端 / 服务端 | 无（全部在端上完成） |
+| 项目       | 要求                                             |
+| -------- | ---------------------------------------------- |
+| 系统       | iOS 17.0+                                      |
+| 工具       | Xcode 16.0+（用了 file-system-synchronized group） |
+| 第三方依赖    | 无（纯系统框架）                                       |
+| 后端 / 服务端 | 无（全部在端上完成）                                     |
 
-> 如果只有 Xcode 15：安装 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 后执行 `xcodegen generate`，
+> 如果只有 Xcode 15：安装 [XcodeGen](https://github.com/yonaskolb/XcodeGen) 后执行 `xcodegen generate`，  
 > 用项目里的 `project.yml` 重新生成一份兼容旧版本的工程即可。
 
 ## 构建
@@ -32,7 +32,7 @@
 bash scripts/build_ipa.sh          # 产物：build/LiveMoment-unsigned.ipa
 ```
 
-**没有 Mac：** 推到 GitHub，用 `.github/workflows/build-ios.yml` 在云端 macOS runner 上编译，
+**没有 Mac：** 推到 GitHub，用 `.github/workflows/build-ios.yml` 在云端 macOS runner 上编译，  
 下载 artifact 得到的 .ipa 再用 Sideloadly 签名安装。完整步骤见 **[安装到手机指南.md](安装到手机指南.md)**。
 
 首次运行会请求「添加到照片库」权限，这是保存实况照片必须的。
@@ -87,11 +87,11 @@ LiveMoment/
 
 实况照片**不是一种新格式**，而是「一张静态主图 + 一段短视频」加上一对**相同的配对标识**：
 
-| 位置 | 写入内容 |
-|---|---|
+| 位置       | 写入内容                                                                    |
+| -------- | ----------------------------------------------------------------------- |
 | 照片（JPEG） | Apple MakerNote **标签 17**（`kCGImagePropertyMakerAppleDictionary["17"]`） |
-| 视频（MOV） | QuickTime 元数据 `com.apple.quicktime.content.identifier` |
-| 两侧 | **完全一致的 UUID** |
+| 视频（MOV）  | QuickTime 元数据 `com.apple.quicktime.content.identifier`                  |
+| 两侧       | **完全一致的 UUID**                                                          |
 
 `LivePhotoBuilder` 的流水线：
 
@@ -104,11 +104,11 @@ LiveMoment/
 
 预览和成品的实现路径完全不同，这一点容易搞混：
 
-| 阶段 | 手段 | 说明 |
-|---|---|---|
-| 编辑预览 | `AVPlayer.rate` + `defaultRate` | 只影响观感，不改文件；`defaultRate` 保证 seek/缓冲之后速率不丢 |
-| 成品输出 | `AVMutableCompositionTrack.scaleTimeRange` | **真正改写时间轴**：把 6 秒素材映射到 3 秒，而不是丢一半帧 |
-| 音频 | `AVMutableAudioMixInputParameters.audioTimePitchAlgorithm = .spectral` | 变速不变调，慢放不闷、快放不尖 |
+| 阶段   | 手段                                                                     | 说明                                        |
+| ---- | ---------------------------------------------------------------------- | ----------------------------------------- |
+| 编辑预览 | `AVPlayer.rate` + `defaultRate`                                        | 只影响观感，不改文件；`defaultRate` 保证 seek/缓冲之后速率不丢 |
+| 成品输出 | `AVMutableCompositionTrack.scaleTimeRange`                             | **真正改写时间轴**：把 6 秒素材映射到 3 秒，而不是丢一半帧        |
+| 音频   | `AVMutableAudioMixInputParameters.audioTimePitchAlgorithm = .spectral` | 变速不变调，慢放不闷、快放不尖                           |
 
 三个必须注意的点：
 
@@ -141,11 +141,11 @@ LiveMoment/
 - **调目标时长保持起点不变** —— 自动反推需要多长的源片段
 - **源片段上限随倍速浮动** —— 1× 时最多 5 秒，2× 时能到 10 秒（因为压缩后还是 5 秒）
 
-| 源片段 | 倍速 | 输出时长 | 适用场景 |
-|---|---|---|---|
-| 3.0 秒 | 1× | 3.0 秒 | 最接近系统原生实况照片 |
-| 6.0 秒 | 2× | 3.0 秒 | 一段完整动作塞进 3 秒 |
-| 1.5 秒 | 0.5× | 3.0 秒 | 把一瞬间的细节拉慢看清 |
+| 源片段   | 倍速   | 输出时长  | 适用场景         |
+| ----- | ---- | ----- | ------------ |
+| 3.0 秒 | 1×   | 3.0 秒 | 最接近系统原生实况照片  |
+| 6.0 秒 | 2×   | 3.0 秒 | 一段完整动作塞进 3 秒 |
+| 1.5 秒 | 0.5× | 3.0 秒 | 把一瞬间的细节拉慢看清  |
 
 硬上限：输出 0.5～5 秒，源片段 0.4～20 秒。系统原生实况照片的惯例是 **3 秒**，超过 3 秒部分第三方 App 可能当成普通视频，编辑器里会给出橙色提示。
 

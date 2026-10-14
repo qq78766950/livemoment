@@ -215,7 +215,7 @@ final class EditorViewModel: ObservableObject {
 
     // MARK: - 生成
 
-    func build(context: ModelContext) async {
+    func build(stillFormat: StillImageFormat, context: ModelContext) async {
         guard let info, !phase.isWorking else { return }
         player.pause()
 
@@ -234,7 +234,8 @@ final class EditorViewModel: ObservableObject {
                 sourceURL: info.url,
                 selection: job,
                 coverTime: coverTime,
-                keepAudio: keepAudio
+                keepAudio: keepAudio,
+                stillFormat: stillFormat
             )
 
             phase = .working("正在写入系统相册…")
@@ -278,6 +279,7 @@ final class EditorViewModel: ObservableObject {
             keepsAudio: keepAudio,
             savedToLibrary: saved,
             libraryIdentifier: identifier,
+            stillFormatRaw: result.stillFormat.rawValue,
             thumbnail: coverPreview?.jpegData(compressionQuality: 0.6)
         )
         context.insert(item)

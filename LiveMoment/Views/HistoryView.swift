@@ -61,7 +61,7 @@ private struct HistoryRow: View {
                 Text(Formatters.recordTitle.string(from: item.createdAt))
                     .font(.subheadline.weight(.medium))
 
-                Text("\(item.resolutionText) · \(item.durationText) · \(item.keepsAudio ? "有声" : "无声")")
+                Text("\(item.stillFormat.displayName) · \(item.resolutionText) · \(item.durationText) · \(item.keepsAudio ? "有声" : "无声")")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 

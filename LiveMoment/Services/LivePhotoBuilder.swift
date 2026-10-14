@@ -12,8 +12,14 @@ import UniformTypeIdentifiers
 struct BuiltLivePhoto: Identifiable, Hashable {
     /// 同时写入照片 MakerNote 与视频 QuickTime 元数据的配对标识，两边必须完全一致。
     let identifier: String
-    /// 静态主图（JPEG）。
+    /// 静态主图。扩展名跟着 `stillFormat` 走，可能是 HEIC 也可能是 JPG。
     let photoURL: URL
+    /// 静态主图**实际**落盘的编码格式。用户偏好不一定被满足，见 `stillFallbackReason`。
+    let stillFormat: StillImageFormat
+    /// 配对标识是否已确认写进主图文件。为 false 时配对可能失效。
+    let identifierVerified: Bool
+    /// 主图格式发生过回退（或标识写入失败）时的说明，正常情况为 nil。
+    let stillFallbackReason: String?
     /// 动态部分（HEVC / MOV）。
     let videoURL: URL
     let pixelSize: CGSize
@@ -32,6 +38,12 @@ struct BuiltLivePhoto: Identifiable, Hashable {
     }
 
     var fileSizeText: String { Formatters.fileSize(videoFileSize) }
+
+    /// 主图格式的展示文案。
+    var stillFormatText: String { stillFormat.displayName }
+
+    /// 主图 + 视频合起来的编码描述，结果页与设置页共用同一套口径。
+    var codecSummary: String { stillFormat.technicalSummary }
 
     /// 只有真正变速过才值得在结果页单独列一行。
     var isRetimed: Bool { abs(speed - 1.0) > 0.001 }
@@ -73,6 +85,10 @@ enum LivePhotoError: LocalizedError {
 /// - 视频侧写进 QuickTime 元数据 com.apple.quicktime.content.identifier；
 /// - 两侧 UUID 一致，系统才会把它们当成同一张实况照片。
 ///
+/// 静态主图可以写成 HEIC 或 JPEG 两种，具体由 `StillImageFormat` 决定，
+/// 编码与「标识是否真的写进去了」的回读校验都交给 `StillImageWriter`。
+/// 视频侧永远是 HEVC / MOV，不受主图格式影响——苹果并不接受把动图塞进 HEIF 那一套。
+///
 /// 保存到相册时之所以还能用 PHAssetCreationRequest 直接配对，是因为 iOS 会读取
 /// 这两个文件里的标识自行完成绑定，所以这一步不能省。
 ///
@@ -97,7 +113,8 @@ final class LivePhotoBuilder {
         sourceURL: URL,
         selection: ClipSelection,
         coverTime: Double,
-        keepAudio: Bool
+        keepAudio: Bool,
+        stillFormat: StillImageFormat
     ) async throws -> BuiltLivePhoto {
         let folder = try makeWorkFolder()
         let identifier = UUID().uuidString
@@ -111,10 +128,16 @@ final class LivePhotoBuilder {
             maxPixelSize: longest
         )
 
-        let photoURL = folder.appendingPathComponent("LiveMoment.JPG")
-        try writeStillImage(cover, identifier: identifier, to: photoURL)
+        // 2) 写静态主图。格式由 StillImageWriter 决定并负责回读校验，
+        //    写不进配对标识时会自动换另一种格式重来。
+        let still = try StillImageWriter.write(
+            cover,
+            identifier: identifier,
+            preferring: stillFormat,
+            in: folder
+        )
 
-        // 2) 裁剪 + 变速 + 转码为 HEVC / MOV，并写入同一个配对标识。
+        // 3) 裁剪 + 变速 + 转码为 HEVC / MOV，并写入同一个配对标识。
         let videoURL = folder.appendingPathComponent("LiveMoment.MOV")
         let written = try await exportMovie(
             sourceURL: sourceURL,
@@ -129,7 +152,10 @@ final class LivePhotoBuilder {
 
         return BuiltLivePhoto(
             identifier: identifier,
-            photoURL: photoURL,
+            photoURL: still.url,
+            stillFormat: still.format,
+            identifierVerified: still.identifierVerified,
+            stillFallbackReason: still.fallbackReason,
             videoURL: videoURL,
             pixelSize: CGSize(width: cover.width, height: cover.height),
             duration: written.outputDuration,
@@ -152,44 +178,6 @@ final class LivePhotoBuilder {
         let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         return folder
-    }
-
-    // MARK: - 封面图落盘（含配对标识）
-
-    private func writeStillImage(_ image: CGImage, identifier: String, to url: URL, quality: CGFloat = 0.95) throws {
-        guard let destination = CGImageDestinationCreateWithURL(
-            url as CFURL,
-            UTType.jpeg.identifier as CFString,
-            1,
-            nil
-        ) else {
-            throw LivePhotoError.imageWriteFailed
-        }
-
-        let stamp = Formatters.exifDate.string(from: Date())
-        let exif: [CFString: Any] = [
-            kCGImagePropertyExifDateTimeOriginal: stamp,
-            kCGImagePropertyExifDateTimeDigitized: stamp
-        ]
-        let tiff: [CFString: Any] = [
-            kCGImagePropertyTIFFMake: "Apple",
-            kCGImagePropertyTIFFModel: "LiveMoment"
-        ]
-
-        let properties: [CFString: Any] = [
-            kCGImageDestinationLossyCompressionQuality: quality,
-            // 抽帧时已经应用过旋转，这里明确写成 1，避免系统再转一次
-            kCGImagePropertyOrientation: 1,
-            kCGImagePropertyExifDictionary: exif,
-            kCGImagePropertyTIFFDictionary: tiff,
-            // ★ 实况照片的配对标识就藏在这里：Apple MakerNote 标签 17
-            kCGImagePropertyMakerAppleDictionary: ["17": identifier]
-        ]
-
-        CGImageDestinationAddImage(destination, image, properties as CFDictionary)
-        guard CGImageDestinationFinalize(destination) else {
-            throw LivePhotoError.imageWriteFailed
-        }
     }
 
     // MARK: - 视频裁剪 + 变速 + 转码（含 QuickTime 元数据）

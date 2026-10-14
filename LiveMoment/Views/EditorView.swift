@@ -10,9 +10,23 @@ struct EditorView: View {
 
     @AppStorage("defaultClipDuration") private var defaultClipDuration: Double = 2.0
     @AppStorage("keepAudioByDefault") private var keepAudioByDefault: Bool = true
+    /// 用 rawValue 存，读的时候再还原成枚举；这样不依赖 AppStorage 对
+    /// RawRepresentable 的泛型重载，行为在所有系统版本上完全一致。
+    @AppStorage("preferredStillFormat") private var preferredStillFormatRaw: String = StillImageFormat.heic.rawValue
 
     @StateObject private var viewModel = EditorViewModel()
     @State private var finished: BuiltLivePhoto?
+
+    private var preferredStillFormat: StillImageFormat {
+        StillImageFormat(rawValue: preferredStillFormatRaw) ?? .heic
+    }
+
+    private var stillFormatBinding: Binding<StillImageFormat> {
+        Binding(
+            get: { preferredStillFormat },
+            set: { preferredStillFormatRaw = $0.rawValue }
+        )
+    }
 
     var body: some View {
         ScrollView {
@@ -253,13 +267,40 @@ struct EditorView: View {
 
             Divider()
 
-            HStack(spacing: 8) {
-                SpecChip(systemImage: "video", text: "HEVC / MOV")
-                SpecChip(systemImage: "rectangle", text: info.resolutionText)
-                SpecChip(systemImage: "timer", text: Formatters.duration(viewModel.outputDuration))
-                SpecChip(systemImage: "speedometer", text: Formatters.speed(viewModel.selection.speed))
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("封面图格式")
+                        .font(.footnote)
+                    Spacer(minLength: 0)
+                    Text(preferredStillFormat.displayName)
+                        .font(.footnote.weight(.medium))
+                        .foregroundStyle(.secondary)
+                }
+                Picker("封面图格式", selection: stillFormatBinding) {
+                    ForEach(StillImageFormat.allCases) { format in
+                        Text(format.displayName).tag(format)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(preferredStillFormat.tradeOff + "动态那一半固定是 HEVC / MOV，不受这个选项影响。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider()
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    SpecChip(systemImage: "photo", text: preferredStillFormat.displayName)
+                    SpecChip(systemImage: "video", text: "HEVC / MOV")
+                    SpecChip(systemImage: "rectangle", text: info.resolutionText)
+                    SpecChip(systemImage: "timer", text: Formatters.duration(viewModel.outputDuration))
+                    SpecChip(systemImage: "speedometer", text: Formatters.speed(viewModel.selection.speed))
+                }
+                .padding(.vertical, 1)
+            }
         }
     }
 
@@ -331,7 +372,7 @@ struct EditorView: View {
                 systemImage: "sparkles",
                 isEnabled: viewModel.info != nil && !viewModel.phase.isWorking
             ) {
-                Task { await viewModel.build(context: modelContext) }
+                Task { await viewModel.build(stillFormat: preferredStillFormat, context: modelContext) }
             }
         }
         .padding(.horizontal, 16)

@@ -93,11 +93,19 @@ struct ResultView: View {
                 LabeledContent("播放速度", value: "\(Formatters.speed(result.speed))（源片段 \(Formatters.duration(result.sourceDuration))）")
             }
             LabeledContent("视频体积", value: result.fileSizeText)
-            LabeledContent("编码格式", value: "HEVC (H.265) / MOV")
+            LabeledContent("静态主图", value: result.stillFormat.displayName)
+            LabeledContent("动态视频", value: "HEVC (H.265) / MOV")
             LabeledContent("配对标识") {
-                Text(result.identifier.prefix(8) + "…")
-                    .font(.footnote.monospaced())
-                    .foregroundStyle(.secondary)
+                HStack(spacing: 4) {
+                    Text(result.identifier.prefix(8) + "…")
+                        .font(.footnote.monospaced())
+                        .foregroundStyle(.secondary)
+                    Image(systemName: result.identifierVerified
+                          ? "checkmark.seal.fill"
+                          : "exclamationmark.triangle.fill")
+                        .font(.caption2)
+                        .foregroundStyle(result.identifierVerified ? .green : .orange)
+                }
             }
             LabeledContent("相册状态") {
                 if libraryIdentifier != nil {
@@ -109,6 +117,21 @@ struct ResultView: View {
                     Text("未保存").font(.footnote).foregroundStyle(.orange)
                 }
             }
+
+            // 发生了格式回退（或标识没写进去）时如实说明，不让用户自己猜
+            if let note = result.stillFallbackReason {
+                Label(
+                    result.identifierVerified
+                        ? "\(note)，已自动改用另一种格式重写。"
+                        : "\(note)，这张实况照片可能无法在相册里配对播放。",
+                    systemImage: result.identifierVerified
+                        ? "arrow.triangle.2.circlepath"
+                        : "exclamationmark.triangle"
+                )
+                .font(.caption2)
+                .foregroundStyle(result.identifierVerified ? Color.secondary : Color.orange)
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -116,7 +139,7 @@ struct ResultView: View {
 
     private var exportCard: some View {
         Card(title: "分享到别的设备", systemImage: "square.and.arrow.up") {
-            Text("实况照片在磁盘上是「一张 JPG + 一段 MOV」两个文件，靠配对标识绑定。AirDrop、iCloud 云盘这类通道能保住配对关系。微信、QQ 会剥掉元数据，发过去会散成两个独立文件。")
+            Text("实况照片在磁盘上是「一张 \(result.stillFormat.displayName) + 一段 MOV」两个文件，靠配对标识绑定。AirDrop、iCloud 云盘这类通道能保住配对关系。微信、QQ 会剥掉元数据，发过去会散成两个独立文件。")
                 .font(.footnote)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -170,6 +193,8 @@ struct ResultView: View {
         if let photo = await requestFromFiles() {
             livePhoto = photo
             statusText = "长按画面即可播放动态与声音。"
+        } else if !result.identifierVerified {
+            statusText = "配对标识没能写进主图文件，系统不会把它认成实况照片。可以到「设置 → 封面图格式」换一种格式再试一次。"
         } else if libraryIdentifier != nil {
             statusText = "照片已保存到相册，请到「照片」App 里长按播放。"
         } else {
