@@ -20,9 +20,20 @@
 
 ## 构建
 
+**有 Mac：**
+
 1. 用 Mac 打开 `LiveMoment/LiveMoment.xcodeproj`
 2. 把 `Signing & Capabilities` 里的 **Bundle Identifier** 改成自己的（默认是占位符 `com.example.livemoment`）
 3. 选择真机 → **Cmd + R** 运行（模拟器里 `PHAssetCreationRequest` 写相册行为受限，务必用真机）
+
+或者一条命令编出一个未签名的 .ipa：
+
+```bash
+bash scripts/build_ipa.sh          # 产物：build/LiveMoment-unsigned.ipa
+```
+
+**没有 Mac：** 推到 GitHub，用 `.github/workflows/build-ios.yml` 在云端 macOS runner 上编译，
+下载 artifact 得到的 .ipa 再用 Sideloadly 签名安装。完整步骤见 **[安装到手机指南.md](安装到手机指南.md)**。
 
 首次运行会请求「添加到照片库」权限，这是保存实况照片必须的。
 
@@ -46,6 +57,9 @@
 LiveMoment/
 ├── LiveMoment.xcodeproj/
 ├── project.yml                  # XcodeGen 备用工程描述
+├── scripts/build_ipa.sh         # 编译 + 打包未签名 .ipa（Mac 与 CI 共用）
+├── .github/workflows/build-ios.yml  # 云端 macOS 编译工作流
+├── 安装到手机指南.md             # 从零到装上 iPhone 的完整步骤
 └── LiveMoment/
     ├── LiveMomentApp.swift      # 入口 + SwiftData 容器
     ├── ContentView.swift        # 三 Tab：制作 / 记录 / 设置
