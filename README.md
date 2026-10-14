@@ -47,11 +47,12 @@ bash scripts/build_ipa.sh          # 产物：build/LiveMoment-unsigned.ipa
 - **时长可调**：1 / 2 / 3 / 5 秒快捷档 + ±0.1 秒微调，按「目标输出时长」反推需要多长的源片段
 - **0.5× ~ 2× 变速**：预览实时变速；成品走 `scaleTimeRange` 真正改写时间轴，并配 `.spectral` 音高算法做到**变速不变调**
 - **封面帧挑选**：滑块在选区内实时抽帧，相册里看到的那张静图由它决定
+- **主图格式可选**：`HEIC`（系统相机原生形态，体积约为 JPEG 一半）或 `JPEG`（通用性最好），写完自动校验配对标识是否落盘
 - **保留 / 关闭原声**：关闭后合成轨道只保留视频
 - **循环预览**：编辑时播放器在选区内按当前倍速循环，直接预览「按压播放」的实际手感
 - **一键写入相册**：`PHAssetCreationRequest(.photo + .pairedVideo)`，产出的是**原生**实况照片
-- **结果页预览**：`PHLivePhotoView` 播放转换结果，规格（含变速信息）一目了然
-- **配对文件导出**：生成 `IMG_xxx.pvt` 包（JPG + MOV），走 AirDrop 传给别的设备
+- **结果页预览**：`PHLivePhotoView` 播放转换结果，规格（含变速与格式信息）一目了然
+- **配对文件导出**：生成 `IMG_xxx.pvt` 包（HEIC/JPG + MOV），走 AirDrop 传给别的设备
 - **转换记录**：SwiftData 落库，可删除
 
 ## 目录结构
@@ -68,11 +69,13 @@ LiveMoment/
     ├── ContentView.swift        # 三 Tab：制作 / 记录 / 设置
     ├── Models/
     │   ├── ClipSelection.swift       # 选区模型（起点 / 长度 / 倍速 + 夹取逻辑）
+    │   ├── StillImageFormat.swift    # 主图格式（HEIC / JPEG）
     │   ├── ConvertedItem.swift       # 转换记录（SwiftData @Model）
     │   └── VideoTransfer.swift       # 相册/文件 → 沙盒
     ├── Services/
     │   ├── VideoLoader.swift         # 元信息 / 缩略图 / 抽帧
     │   ├── LivePhotoBuilder.swift    # ★ 核心引擎（裁剪 + 变速 + 元数据）
+    │   ├── StillImageWriter.swift    # ★ 主图编码 + 配对标识回读校验
     │   ├── PhotoLibraryService.swift # 相册写入
     │   ├── ExportService.swift       # .pvt 配对文件导出
     │   └── LoopingPlayer.swift       # 选区循环播放器（带倍速与拖动跟随）
@@ -89,16 +92,37 @@ LiveMoment/
 
 | 位置       | 写入内容                                                                    |
 | -------- | ----------------------------------------------------------------------- |
-| 照片（JPEG） | Apple MakerNote **标签 17**（`kCGImagePropertyMakerAppleDictionary["17"]`） |
+| 照片（HEIC / JPEG） | Apple MakerNote **标签 17**（`kCGImagePropertyMakerAppleDictionary["17"]`） |
 | 视频（MOV）  | QuickTime 元数据 `com.apple.quicktime.content.identifier`                  |
 | 两侧       | **完全一致的 UUID**                                                          |
 
 `LivePhotoBuilder` 的流水线：
 
 1. **抽封面帧** —— `AVAssetImageGenerator`，开 `appliesPreferredTrackTransform` 保证竖屏素材抽出来也是竖的；`maximumSize` 用视频原生分辨率，保证封面与视频轨道尺寸一致
-2. **写静态主图** —— `CGImageDestination` 输出 JPEG，同时写进 MakerNote 17
+2. **写静态主图** —— `CGImageDestination` 输出 HEIC 或 JPEG（默认 HEIC），同时写进 MakerNote 17；写完**立刻回读校验**标识是否真的落盘，不合格自动换另一种格式重写
 3. **裁剪 + 转码** —— `AVMutableComposition` 按 `CMTimeRange` 截取（顺便决定要不要音轨），`AVAssetExportSession` 用 `AVAssetExportPresetHEVCHighestQuality` 输出 `.mov`，并把 UUID 写进 `session.metadata`
 4. **写入相册** —— `PHAssetCreationRequest.forAsset()` 添加 `.photo` 与 `.pairedVideo` 两个资源，系统读取两侧标识完成绑定
+
+### 主图格式：为什么默认写成 HEIC
+
+静态主图这一半有两种写法，App 里可以随时切换，默认是 `HEIC`。
+
+| 格式 | 体积 | 定位 |
+| --- | --- | --- |
+| **HEIC**（默认） | 约为 JPEG 的一半 | 系统相机在「高效」模式下拍出的原生形态，也是苹果最认的那条路 |
+| JPEG | 基准 | 通用性最好，任何环境都能直接查看 |
+
+选 HEIC 不只是为了省空间，还因为一个很隐蔽的坑：**iOS 15.1 起，ImageIO 往 JPEG 里写 `kCGImagePropertyMakerAppleDictionary` 时可能直接把它丢掉**——而配对标识恰好就存在那个字典里。
+
+更麻烦的是这种失败**不会报错**：`CGImageDestinationFinalize` 照样返回 `true`，文件也是一张好图，只是标识没进去。等用户把成品存进相册、长按却纹丝不动时才会发现。
+
+所以 `StillImageWriter` 在编码之后做了一件别处通常不会做的事——**把文件读回来，比对 Apple MakerNote 标签 17 是否等于刚写进去的那个 UUID**：
+
+- 校验通过 → 采用
+- 校验不通过（或该格式根本编不出来）→ 换另一种格式重写，并在结果页如实说明发生了回退
+- 两种都写不进去 → 保留图片本身，同时在结果页给出警告，而不是假装成功
+
+视频那一半永远是 HEVC / MOV，不受这个选项影响——苹果的实况照片并不是把动图塞进 HEIF 的那套做法。
 
 ### 变速是怎么做的
 
@@ -122,7 +146,8 @@ LiveMoment/
 - **HEVC 失败有兜底**：拿不到 HEVC 会话时退回 `AVAssetExportPresetHighestQuality`
 - **旋转信息要带过去**：合成轨上手动回填 `preferredTransform`，否则竖屏视频会被压扁
 - **选区要先跟素材时长求交集**：源文件的时长元数据偶尔比实际可解码内容长一点，直接 `insertTimeRange` 会抛错把整个转换带崩
-- **封面帧必然有损**：H.264/H.265 是帧间压缩，任何工具都无法无损抠出静帧，只能重新编码（质量给到 0.95）
+- **封面帧必然有损**：H.264/H.265 是帧间压缩，任何工具都无法无损抠出静帧，只能重新编码
+- **iOS 15.1 起 JPEG 可能留不住配对标识**：见上文「主图格式」一节，默认走 HEIC，并且每次都做回读校验
 - **`still-image-time` 时间元数据轨未手写**：相册路径由 iOS 自行补全，不受影响；仅「文件导出」模式下极少数第三方相册 App 可能要求它
 
 ---
@@ -154,6 +179,7 @@ LiveMoment/
 ## 已知限制
 
 - **微信、QQ 会剥离元数据**：实况照片直接发过去会散成「一张图 + 一段视频」。这是平台行为，任何客户端都无法绕过。要分享请用结果页的「保存配对文件」+ AirDrop
+- **HEIC 在苹果生态外兼容性一般**：把 `.pvt` 导出给 Android 或老旧设备看时，主图切到 JPEG 更稳妥；视频那一半两种格式完全一样
 - 依赖系统转码能力，个别冷门编码（如某些 HDR/ProRes）可能转换失败，已有降级路径兜底
 - 临时产物放在 `tmp/LiveMomentWork`，每次重新生成前会回收上一轮，iOS 也会在空间紧张时自动清理
 
