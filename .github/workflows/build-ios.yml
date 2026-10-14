@@ -6,6 +6,10 @@ on:
   push:
     branches: [main, master]
 
+# 允许失败时把日志提交回仓库
+permissions:
+  contents: write
+
 jobs:
   build:
     name: 云端编译（macOS runner）
@@ -45,7 +49,7 @@ jobs:
           ls -la build/*.ipa
 
       - name: 编译日志（失败时留档）
-        if: steps.direct.outcome == 'failure'
+        if: failure()
         run: |
           echo "===== xcodebuild.log 末尾 200 行 ====="
           tail -n 200 build/xcodebuild.log || true
@@ -58,8 +62,35 @@ jobs:
           path: build/*.ipa
           retention-days: 30
 
+      # 日志下载需要凭据，所以失败时直接把日志提交回仓库，
+      # 这样不登录也能通过 raw.githubusercontent.com 读到。
+      # [skip ci] 防止这次 push 再触发新一轮构建造成死循环。
+      - name: 把编译日志提交回仓库
+        if: always()
+        run: |
+          if [ -f build/xcodebuild.log ]; then
+            tail -n 600 build/xcodebuild.log > build-error.log
+          else
+            {
+              echo "build/xcodebuild.log 不存在，build 目录内容："
+              ls -la build 2>&1 || true
+              echo "--- 工作目录 ---"
+              ls -la
+            } > build-error.log
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add build-error.log
+          if git diff --cached --quiet; then
+            echo "日志没有变化，跳过提交"
+          else
+            git commit -q -m "CI: 提交编译日志供诊断 [skip ci]"
+            git push
+            echo "已提交日志"
+          fi
+
       - name: 两次都没编过就报错退出
         if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
         run: |
-          echo "::error::两次编译都失败了，请看上面的日志。把错误贴给我，我来修。"
+          echo "::error::两次编译都失败了，完整日志见仓库根目录 build-error.log"
           exit 1
