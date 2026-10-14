@@ -39,12 +39,6 @@ struct BuiltLivePhoto: Identifiable, Hashable {
 
     var fileSizeText: String { Formatters.fileSize(videoFileSize) }
 
-    /// 主图格式的展示文案。
-    var stillFormatText: String { stillFormat.displayName }
-
-    /// 主图 + 视频合起来的编码描述，结果页与设置页共用同一套口径。
-    var codecSummary: String { stillFormat.technicalSummary }
-
     /// 只有真正变速过才值得在结果页单独列一行。
     var isRetimed: Bool { abs(speed - 1.0) > 0.001 }
 }

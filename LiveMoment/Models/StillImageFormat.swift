@@ -73,12 +73,4 @@ enum StillImageFormat: String, CaseIterable, Identifiable, Sendable {
         case .jpeg: return 0.95
         }
     }
-
-    /// 设置页里那行「技术参数」用的描述。
-    var technicalSummary: String {
-        switch self {
-        case .heic: return "HEIC 主图 + HEVC / MOV 动图"
-        case .jpeg: return "JPEG 主图 + HEVC / MOV 动图"
-        }
-    }
 }
