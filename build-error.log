@@ -1,0 +1,202 @@
+Command line invocation:
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/xcodebuild build -project LiveMoment.xcodeproj -target LiveMoment -configuration Release -sdk iphoneos SYMROOT=/Users/runner/work/livemoment/livemoment/build OBJROOT=/Users/runner/work/livemoment/livemoment/build/obj ONLY_ACTIVE_ARCH=NO CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY= CODE_SIGN_ENTITLEMENTS= PROVISIONING_PROFILE_SPECIFIER= DEVELOPMENT_TEAM=
+
+Build settings from command line:
+    CODE_SIGN_ENTITLEMENTS = 
+    CODE_SIGN_IDENTITY = 
+    CODE_SIGNING_ALLOWED = NO
+    CODE_SIGNING_REQUIRED = NO
+    DEVELOPMENT_TEAM = 
+    OBJROOT = /Users/runner/work/livemoment/livemoment/build/obj
+    ONLY_ACTIVE_ARCH = NO
+    PROVISIONING_PROFILE_SPECIFIER = 
+    SDKROOT = iphoneos18.5
+    SYMROOT = /Users/runner/work/livemoment/livemoment/build
+
+note: Using codesigning identity override: 
+ComputePackagePrebuildTargetDependencyGraph
+
+Prepare packages
+
+CreateBuildRequest
+
+SendProjectDescription
+
+CreateBuildOperation
+
+ComputeTargetDependencyGraph
+note: Building targets in dependency order
+note: Target dependency graph (1 target)
+    Target 'LiveMoment' in project 'LiveMoment' (no dependencies)
+
+GatherProvisioningInputs
+
+CreateBuildDescription
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang -v -E -dM -isysroot /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -x c -c /dev/null
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --print-asset-tag-combinations --output-format xml1 /Users/runner/work/livemoment/livemoment/LiveMoment/Assets.xcassets
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool --version --output-format xml1
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc --version
+
+ExecuteExternalTool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/ld -version_details
+
+Build description signature: 7e854c16a1bf85238bb052111c09dd45
+Build description path: /Users/runner/work/livemoment/livemoment/build/obj/XCBuildData/7e854c16a1bf85238bb052111c09dd45.xcbuilddata
+CreateBuildDirectory /Users/runner/work/livemoment/livemoment/build
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    builtin-create-build-directory /Users/runner/work/livemoment/livemoment/build
+
+ClangStatCache /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/com.apple.DeveloperTools/16.4-16F6/Xcode/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/clang-stat-cache /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -o /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/com.apple.DeveloperTools/16.4-16F6/Xcode/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache
+
+CreateBuildDirectory /Users/runner/work/livemoment/livemoment/build/obj
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    builtin-create-build-directory /Users/runner/work/livemoment/livemoment/build/obj
+
+CreateBuildDirectory /Users/runner/work/livemoment/livemoment/build/Release-iphoneos
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    builtin-create-build-directory /Users/runner/work/livemoment/livemoment/build/Release-iphoneos
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment-703021a8530e35f1df2f50de2a965c64-VFS-iphoneos/all-product-headers.yaml
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment-703021a8530e35f1df2f50de2a965c64-VFS-iphoneos/all-product-headers.yaml
+
+CreateBuildDirectory /Users/runner/work/livemoment/livemoment/build/obj/EagerLinkingTBDs/Release-iphoneos
+    cd /Users/runner/work/livemoment/livemoment/LiveMoment.xcodeproj
+    builtin-create-build-directory /Users/runner/work/livemoment/livemoment/build/obj/EagerLinkingTBDs/Release-iphoneos
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/empty-LiveMoment.plist (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/empty-LiveMoment.plist
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment_const_extract_protocols.json (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment_const_extract_protocols.json
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftFileList (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftFileList
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftConstValuesFileList (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftConstValuesFileList
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.LinkFileList (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.LinkFileList
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-OutputFileMap.json (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-OutputFileMap.json
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.hmap
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.DependencyStaticMetadataFileList (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.DependencyStaticMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.DependencyMetadataFileList (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment.DependencyMetadataFileList
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-project-headers.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-project-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-own-target-headers.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-own-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-generated-files.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-generated-files.hmap
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-target-headers.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-target-headers.hmap
+
+WriteAuxiliaryFile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-non-framework-target-headers.hmap (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    write-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-non-framework-target-headers.hmap
+
+MkDir /Users/runner/work/livemoment/livemoment/build/Release-iphoneos/LiveMoment.app (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    /bin/mkdir -p /Users/runner/work/livemoment/livemoment/build/Release-iphoneos/LiveMoment.app
+
+MkDir /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_output/unthinned (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    /bin/mkdir -p /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_output/unthinned
+
+MkDir /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_output/thinned (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    /bin/mkdir -p /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_output/thinned
+
+GenerateAssetSymbols /Users/runner/work/livemoment/livemoment/LiveMoment/Assets.xcassets (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/livemoment/livemoment/LiveMoment/Assets.xcassets --compile /Users/runner/work/livemoment/livemoment/build/Release-iphoneos/LiveMoment.app --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_dependencies --output-partial-info-plist /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_generated_info.plist --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 17.0 --platform iphoneos --bundle-identifier com.example.livemoment --generate-swift-asset-symbol-extensions NO --generate-swift-asset-symbols /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.swift --generate-objc-asset-symbols /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.h --generate-asset-symbol-index /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/* com.apple.actool.compilation-results */
+/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols-Index.plist
+/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.h
+/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.swift
+
+
+CompileAssetCatalogVariant thinned /Users/runner/work/livemoment/livemoment/build/Release-iphoneos/LiveMoment.app /Users/runner/work/livemoment/livemoment/LiveMoment/Assets.xcassets (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    /Applications/Xcode_16.4.app/Contents/Developer/usr/bin/actool /Users/runner/work/livemoment/livemoment/LiveMoment/Assets.xcassets --compile /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_output/thinned --output-format human-readable-text --notices --warnings --export-dependency-info /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_dependencies_thinned --output-partial-info-plist /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/assetcatalog_generated_info.plist_thinned --app-icon AppIcon --accent-color AccentColor --compress-pngs --enable-on-demand-resources YES --development-region en --target-device iphone --target-device ipad --minimum-deployment-target 17.0 --platform iphoneos
+
+SwiftDriver LiveMoment normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    builtin-SwiftDriver -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LiveMoment -O -whole-module-optimization -enforce-exclusivity\=checked @/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios17.0 -g -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -F /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64 -c -num-threads 3 -Xcc -ivfsstatcache -Xcc /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/com.apple.DeveloperTools/16.4-16F6/Xcode/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.swiftmodule -validate-clang-modules-once -clang-build-session-file /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/org.llvm.clang/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-generated-files.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-own-target-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-project-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/Release-iphoneos/include -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-Swift.h -working-directory /Users/runner/work/livemoment/livemoment -no-emit-module-separately-wmo
+
+SwiftCompile normal arm64 Compiling\ ClipSelection.swift,\ ContentView.swift,\ ConvertedItem.swift,\ EditorView.swift,\ EditorViewModel.swift,\ ExportService.swift,\ Formatters.swift,\ HistoryView.swift,\ HomeView.swift,\ LiveMomentApp.swift,\ LivePhotoBuilder.swift,\ LoopingPlayer.swift,\ MediaViews.swift,\ OnceBox.swift,\ PhotoLibraryService.swift,\ ResultView.swift,\ SettingsView.swift,\ TimelineSelectorView.swift,\ VideoLoader.swift,\ VideoTransfer.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ClipSelection.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ContentView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ConvertedItem.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/EditorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ViewModels/EditorViewModel.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/ExportService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/Formatters.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HistoryView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HomeView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/LiveMomentApp.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LivePhotoBuilder.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LoopingPlayer.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/OnceBox.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/PhotoLibraryService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/ResultView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/SettingsView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/TimelineSelectorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/VideoLoader.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/VideoTransfer.swift /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'LiveMoment' from project 'LiveMoment')
+Failed frontend command:
+/Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swift-frontend -frontend -c /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ClipSelection.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ContentView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ConvertedItem.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/EditorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ViewModels/EditorViewModel.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/ExportService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/Formatters.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HistoryView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HomeView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/LiveMomentApp.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LivePhotoBuilder.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LoopingPlayer.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/OnceBox.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/PhotoLibraryService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/ResultView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/SettingsView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/TimelineSelectorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/VideoLoader.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/VideoTransfer.swift /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.swift -supplementary-output-file-map /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/supplementaryOutputs-1 -emit-localized-strings -emit-localized-strings-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64 -target arm64-apple-ios17.0 -Xllvm -aarch64-use-tbi -enable-objc-interop -stack-check -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -I /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -F /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -no-color-diagnostics -g -debug-info-format\=dwarf -dwarf-version\=4 -swift-version 5 -enforce-exclusivity\=checked -O -serialize-debugging-options -const-gather-protocols-file /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment_const_extract_protocols.json -enable-experimental-feature DebugDescriptionMacro -enable-bare-slash-regex -empty-abi-descriptor -validate-clang-modules-once -clang-build-session-file /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/org.llvm.clang/ModuleCache.noindex/Session.modulevalidation -Xcc -working-directory -Xcc /Users/runner/work/livemoment/livemoment -resource-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift -file-compilation-dir /Users/runner/work/livemoment/livemoment -Xcc -ivfsstatcache -Xcc /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/com.apple.DeveloperTools/16.4-16F6/Xcode/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/swift-overrides.hmap -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-generated-files.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-own-target-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-project-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/Release-iphoneos/include -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources -module-name LiveMoment -frontend-parseable-output -disable-clang-spi -target-sdk-version 18.5 -target-sdk-name iphoneos18.5 -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -external-plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/local/lib/swift/host/plugins\#/Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/usr/bin/swift-plugin-server -in-process-plugin-server-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/libSwiftInProcPluginServer.dylib -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/host/plugins -plugin-path /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/local/lib/swift/host/plugins -enable-default-cmo -num-threads 3 -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ClipSelection.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ContentView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ConvertedItem.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/EditorView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/EditorViewModel.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ExportService.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/Formatters.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/HistoryView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/HomeView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMomentApp.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LivePhotoBuilder.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LoopingPlayer.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/MediaViews.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/OnceBox.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/PhotoLibraryService.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ResultView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/SettingsView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/TimelineSelectorView.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/VideoLoader.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/VideoTransfer.o -o /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/GeneratedAssetSymbols.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ClipSelection.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ContentView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ConvertedItem.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/EditorView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/EditorViewModel.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ExportService.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/Formatters.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/HistoryView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/HomeView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMomentApp.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LivePhotoBuilder.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LoopingPlayer.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/MediaViews.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/OnceBox.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/PhotoLibraryService.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/ResultView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/SettingsView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/TimelineSelectorView.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/VideoLoader.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/VideoTransfer.o -index-unit-output-path /LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/GeneratedAssetSymbols.o
+
+CompileSwift normal arm64 (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:36:42: error: cannot find type 'PHLivePhotoView' in scope
+    func makeUIView(context: Context) -> PHLivePhotoView {
+                                         ^~~~~~~~~~~~~~~
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:43:33: error: cannot find type 'PHLivePhotoView' in scope
+    func updateUIView(_ uiView: PHLivePhotoView, context: Context) {
+                                ^~~~~~~~~~~~~~~
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:33:8: error: type 'LivePhotoPreviewView' does not conform to protocol 'UIViewRepresentable'
+struct LivePhotoPreviewView: UIViewRepresentable {
+       ^
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:33:8: note: add stubs for conformance
+struct LivePhotoPreviewView: UIViewRepresentable {
+       ^
+SwiftUI.UIViewRepresentable.UIViewType:2:16: note: protocol requires nested type 'UIViewType'
+associatedtype UIViewType : UIView}
+               ^
+SwiftUI.UIViewRepresentable.Coordinator:2:16: note: protocol requires nested type 'Coordinator'
+associatedtype Coordinator = Void}
+               ^
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:37:20: error: cannot find 'PHLivePhotoView' in scope
+        let view = PHLivePhotoView()
+                   ^~~~~~~~~~~~~~~
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:38:29: error: cannot infer contextual base in reference to member 'scaleAspectFit'
+        view.contentMode = .scaleAspectFit
+                           ~^~~~~~~~~~~~~~
+/Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift:48:41: error: cannot infer contextual base in reference to member 'full'
+            uiView.startPlayback(with: .full)
+                                       ~^~~~
+
+SwiftDriver\ Compilation LiveMoment normal arm64 com.apple.xcode.tools.swift.compiler (in target 'LiveMoment' from project 'LiveMoment')
+    cd /Users/runner/work/livemoment/livemoment
+    builtin-Swift-Compilation -- /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/swiftc -module-name LiveMoment -O -whole-module-optimization -enforce-exclusivity\=checked @/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.SwiftFileList -enable-bare-slash-regex -enable-experimental-feature DebugDescriptionMacro -sdk /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk -target arm64-apple-ios17.0 -g -Xfrontend -serialize-debugging-options -swift-version 5 -I /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -F /Users/runner/work/livemoment/livemoment/build/Release-iphoneos -emit-localized-strings -emit-localized-strings-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64 -c -num-threads 3 -Xcc -ivfsstatcache -Xcc /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/com.apple.DeveloperTools/16.4-16F6/Xcode/SDKStatCaches.noindex/iphoneos18.5-22F76-a529daf784b3616c7c04a36aeb7f5c05.sdkstatcache -output-file-map /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-OutputFileMap.json -use-frontend-parseable-output -save-temps -no-color-diagnostics -serialize-diagnostics -emit-dependencies -emit-module -emit-module-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment.swiftmodule -validate-clang-modules-once -clang-build-session-file /var/folders/nj/vtw8zd2j31d1gdrtntc5y4600000gn/C/org.llvm.clang/ModuleCache.noindex/Session.modulevalidation -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/swift-overrides.hmap -emit-const-values -Xfrontend -const-gather-protocols-file -Xfrontend /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment_const_extract_protocols.json -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-generated-files.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-own-target-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-all-target-headers.hmap -Xcc -iquote -Xcc /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/LiveMoment-project-headers.hmap -Xcc -I/Users/runner/work/livemoment/livemoment/build/Release-iphoneos/include -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources-normal/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/arm64 -Xcc -I/Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources -emit-objc-header -emit-objc-header-path /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/Objects-normal/arm64/LiveMoment-Swift.h -working-directory /Users/runner/work/livemoment/livemoment -no-emit-module-separately-wmo
+
+** BUILD FAILED **
+
+
+The following build commands failed:
+	SwiftCompile normal arm64 Compiling\ ClipSelection.swift,\ ContentView.swift,\ ConvertedItem.swift,\ EditorView.swift,\ EditorViewModel.swift,\ ExportService.swift,\ Formatters.swift,\ HistoryView.swift,\ HomeView.swift,\ LiveMomentApp.swift,\ LivePhotoBuilder.swift,\ LoopingPlayer.swift,\ MediaViews.swift,\ OnceBox.swift,\ PhotoLibraryService.swift,\ ResultView.swift,\ SettingsView.swift,\ TimelineSelectorView.swift,\ VideoLoader.swift,\ VideoTransfer.swift,\ GeneratedAssetSymbols.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ClipSelection.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ContentView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/ConvertedItem.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/EditorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/ViewModels/EditorViewModel.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/ExportService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/Formatters.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HistoryView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/HomeView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/LiveMomentApp.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LivePhotoBuilder.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/LoopingPlayer.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/MediaViews.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Utilities/OnceBox.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/PhotoLibraryService.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/ResultView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/SettingsView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Views/TimelineSelectorView.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Services/VideoLoader.swift /Users/runner/work/livemoment/livemoment/LiveMoment/Models/VideoTransfer.swift /Users/runner/work/livemoment/livemoment/build/obj/LiveMoment.build/Release-iphoneos/LiveMoment.build/DerivedSources/GeneratedAssetSymbols.swift (in target 'LiveMoment' from project 'LiveMoment')
+	CompileSwift normal arm64 (in target 'LiveMoment' from project 'LiveMoment')
+(2 failures)
