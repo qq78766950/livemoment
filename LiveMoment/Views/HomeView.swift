@@ -7,6 +7,10 @@ struct HomeView: View {
     @State private var pickerItem: PhotosPickerItem?
     @State private var imported: ImportedVideo?
     @State private var showFileImporter = false
+    @State private var showCamera = false
+    /// 拍完先存这儿，等拍摄页完全收起后再推编辑器——
+    /// 在 fullScreenCover 收起的同时改导航状态，两个转场会打架。
+    @State private var pendingCapture: URL?
     @State private var isLoading = false
     @State private var errorMessage: String?
 
@@ -14,6 +18,17 @@ struct HomeView: View {
         ScrollView {
             VStack(spacing: 14) {
                 hero
+
+                Button {
+                    showCamera = true
+                } label: {
+                    entryLabel(
+                        title: "拍摄一段",
+                        subtitle: "用相机现拍，边动边录，拍完直接做成实况照片",
+                        systemImage: "camera"
+                    )
+                }
+                .buttonStyle(.plain)
 
                 PhotosPicker(selection: $pickerItem, matching: .videos, photoLibrary: .shared()) {
                     entryLabel(
@@ -51,6 +66,11 @@ struct HomeView: View {
                 }
             }
         }
+        .fullScreenCover(isPresented: $showCamera, onDismiss: consumePendingCapture) {
+            CameraCaptureView { url in
+                pendingCapture = url
+            }
+        }
         .onChange(of: pickerItem) { _, newValue in
             guard let newValue else { return }
             Task { await loadFromPicker(newValue) }
@@ -81,7 +101,7 @@ struct HomeView: View {
                 .foregroundStyle(Color.accentColor)
             Text("把一段视频变成一张会动的照片")
                 .font(.title3.weight(.semibold))
-            Text("挑一段视频，拖手柄截出想要的片段，随手拖拉就能看到画面跳到哪儿；再定好时长、调个快慢，选好封面帧，就能生成一张可以按压播放、带声音的实况照片。")
+            Text("现拍一段，或从相册里挑一段，拖手柄截出想要的片段，随手拖拉就能看到画面跳到哪儿；再定好时长、调个快慢，选好封面帧，就能生成一张可以按压播放、带声音的实况照片。想做锁屏壁纸可以开壁纸模式，想发给安卓手机可以导出动态照片。")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -117,9 +137,12 @@ struct HomeView: View {
         Card(title: "使用提示", systemImage: "lightbulb") {
             bullet("拖两侧手柄改片段长度，拖选区中间挪位置；拖动过程中画面会跟着跳，选到哪儿看得见。")
             bullet("0.5×～2× 可调速：想留住更多动作就选长一点 + 快放，6 秒素材开 2× 正好装进 3 秒。")
+            bullet("想在同一段里做出「先慢后快」的节奏，打开分段变速，定好起速和终速就行。")
+            bullet("要做锁屏壁纸，打开壁纸模式：输出会固定成 0.916667 秒、视频时间基 600，并标好封面帧。")
             bullet("片段越短越像真的实况照片，1.5～3 秒最自然；超过 3 秒在部分 App 里会被当普通视频。")
-            bullet("封面帧建议挑画面最稳、最清楚的那一帧。")
+            bullet("封面帧建议挑画面最稳、最清楚的那一帧；壁纸模式下封面固定取片段最后一帧。")
             bullet("生成后可以直接发朋友圈；要传给别的手机请用 AirDrop，微信会剥掉元数据。")
+            bullet("发给安卓手机用结果页的「导出安卓动态照片」，那是单文件格式，和苹果的双文件不通用。")
         }
     }
 
@@ -137,6 +160,13 @@ struct HomeView: View {
     }
 
     // MARK: - 数据
+
+    /// 拍摄页收起之后再推编辑器，避免两个转场抢同一帧。
+    private func consumePendingCapture() {
+        guard let url = pendingCapture else { return }
+        pendingCapture = nil
+        imported = ImportedVideo(url: url)
+    }
 
     private var errorBinding: Binding<Bool> {
         Binding(

@@ -37,5 +37,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: 需要读取你选中的视频来制作实况照片。
         INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription: 需要保存转好的实况照片到你的相册。
+        INFOPLIST_KEY_NSCameraUsageDescription: 需要打开摄像头来拍摄素材，拍完可以直接做成实况照片。
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 拍摄时保留环境声会用到麦克风。
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight

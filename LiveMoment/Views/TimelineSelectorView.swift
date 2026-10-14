@@ -132,6 +132,20 @@ struct TimelineSelectorView: View {
         totalDuration / Double(max(trackWidth, 1))
     }
 
+    /// 只改起点与长度，倍速 / 分段变速 / 壁纸模式原样带过去。
+    ///
+    /// 这里必须逐项复制而不是写 `ClipSelection(start:duration:)`——
+    /// 后者会把分段变速和壁纸模式悄悄清掉，用户一拖时间轴就发现设置没了。
+    private func rebuilt(start: Double, duration: Double) -> ClipSelection {
+        ClipSelection(
+            start: start,
+            duration: duration,
+            speed: selection.speed,
+            ramp: selection.ramp,
+            isWallpaper: selection.isWallpaper
+        )
+    }
+
     /// 拖动两侧手柄：改变片段长度。
     private func edgeGesture(isLeading: Bool, trackWidth: CGFloat) -> some Gesture {
         DragGesture(minimumDistance: 0)
@@ -159,10 +173,9 @@ struct TimelineSelectorView: View {
                     start = max(start, end - limit)
                 }
 
-                let next = ClipSelection(
+                let next = rebuilt(
                     start: max(0, start),
-                    duration: max(ClipSelection.minSourceDuration, end - start),
-                    speed: selection.speed
+                    duration: max(ClipSelection.minSourceDuration, end - start)
                 )
                 selection = next
                 onScrub(isLeading ? next.start : max(next.start, next.end - frameBackstep))
@@ -185,11 +198,7 @@ struct TimelineSelectorView: View {
                 let maxStart = max(0, totalDuration - selection.duration)
                 let newStart = min(max(0, base + delta), maxStart)
 
-                selection = ClipSelection(
-                    start: newStart,
-                    duration: selection.duration,
-                    speed: selection.speed
-                )
+                selection = rebuilt(start: newStart, duration: selection.duration)
                 onScrub(newStart)
             }
             .onEnded { _ in

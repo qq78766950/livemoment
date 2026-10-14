@@ -19,6 +19,12 @@ final class LoopingPlayer: ObservableObject {
 
     private var timeObserver: Any?
     private var range: CMTimeRange = .zero
+    /// 分段变速预览用的速度曲线：参数是选区内的归一化进度（0…1），返回该点的倍速。
+    ///
+    /// `AVPlayer` 本身只会一个恒定速率播放，所以「先慢后快」在预览里是由
+    /// 时间观察器每 0.1 秒按进度改一次 `rate` 拼出来的。粒度比成品的逐段缩放粗，
+    /// 但足够在按下生成之前看出节奏对不对——两边用的是同一组速度值。
+    private var rateProfile: ((Double) -> Float)?
 
     init() {
         player.actionAtItemEnd = .pause
@@ -62,8 +68,9 @@ final class LoopingPlayer: ObservableObject {
             seek(to: range.start.seconds)
         }
         player.play()
-        // play() 之后必须重新交代速率，否则会退回 1.0
-        player.rate = rate
+        // play() 之后必须重新交代速率，否则会退回 1.0；
+        // 开了分段变速的话，落点那一刻该用哪个速率由曲线说了算
+        player.rate = profileRate(at: player.currentTime().seconds) ?? rate
         isPlaying = true
     }
 
@@ -76,17 +83,36 @@ final class LoopingPlayer: ObservableObject {
         isPlaying ? pause() : play()
     }
 
-    /// 设置预览倍速。
+    /// 设置预览倍速（匀速）。
     func setRate(_ value: Float) {
+        rateProfile = nil
         let clamped = min(max(value.isFinite ? value : 1.0, 0.25), 4.0)
-        guard abs(clamped - rate) > 0.0001 else { return }
-        rate = clamped
+        applyRate(clamped)
+    }
+
+    /// 设置分段变速的速度曲线。传 nil 表示回到匀速。
+    func setRateProfile(_ profile: ((Double) -> Float)?) {
+        rateProfile = profile
+        guard profile == nil else { return }
+        applyRate(rate)
+    }
+
+    private func applyRate(_ value: Float) {
+        guard abs(value - rate) > 0.0001 else { return }
+        rate = value
         if #available(iOS 16.0, *) {
-            player.defaultRate = clamped
+            player.defaultRate = value
         }
         if isPlaying {
-            player.rate = clamped
+            player.rate = value
         }
+    }
+
+    /// 按当前进度取这条曲线上该用的速率。
+    private func profileRate(at seconds: Double) -> Float? {
+        guard let rateProfile, range.duration.seconds > 0.01 else { return nil }
+        let progress = (seconds - range.start.seconds) / range.duration.seconds
+        return rateProfile(min(max(progress, 0), 1))
     }
 
     /// 跳转。`precise = false` 用于拖动时间轴时的高频跟随——
@@ -127,11 +153,18 @@ final class LoopingPlayer: ObservableObject {
             let end = self.range.end.seconds
             let start = self.range.start.seconds
             guard self.range.duration.seconds > 0, self.isPlaying else { return }
+
+            // 分段变速：按进度把速率推到曲线上该有的值
+            if let target = self.profileRate(at: time.seconds),
+               abs(target - self.player.rate) > 0.01 {
+                self.player.rate = min(max(target, 0.25), 4.0)
+            }
+
             if time.seconds >= end - 0.04 || time.seconds < start - 0.04 {
                 let target = self.range.start
                 self.player.seek(to: target, toleranceBefore: .zero, toleranceAfter: .zero)
                 // 跳回起点后立刻恢复速率，避免快放/慢放在循环处丢失
-                self.player.rate = self.rate
+                self.player.rate = self.profileRate(at: start) ?? self.rate
             }
         }
     }

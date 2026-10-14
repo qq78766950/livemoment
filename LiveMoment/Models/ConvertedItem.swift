@@ -18,6 +18,10 @@ final class ConvertedItem {
     /// 给了默认值，所以旧记录在 SwiftData 轻量迁移时会被自动补上，
     /// 不会因为新增字段导致建库失败。
     var stillFormatRaw: String = StillImageFormat.heic.rawValue
+    /// 是否按壁纸模式生成（时长钉在 550/600 秒、时间基 600、带封面帧标记）。
+    ///
+    /// 同样给了默认值，旧记录在轻量迁移时会被补成 false。
+    var isWallpaper: Bool = false
     /// 封面缩略图，落到外部存储避免撑大数据库。
     @Attribute(.externalStorage) var thumbnail: Data?
 
@@ -32,6 +36,7 @@ final class ConvertedItem {
         savedToLibrary: Bool,
         libraryIdentifier: String? = nil,
         stillFormatRaw: String = StillImageFormat.heic.rawValue,
+        isWallpaper: Bool = false,
         thumbnail: Data? = nil
     ) {
         self.title = title
@@ -44,6 +49,7 @@ final class ConvertedItem {
         self.savedToLibrary = savedToLibrary
         self.libraryIdentifier = libraryIdentifier
         self.stillFormatRaw = stillFormatRaw
+        self.isWallpaper = isWallpaper
         self.thumbnail = thumbnail
     }
 

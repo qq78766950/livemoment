@@ -33,12 +33,11 @@ final class EditorViewModel: ObservableObject {
 
     @Published private(set) var info: VideoInfo? = nil
     @Published private(set) var thumbnails: [UIImage] = []
+    /// 选区：起点 / 长度 / 倍速 / 分段变速 / 壁纸模式，全在这一个结构里。
     @Published var selection = ClipSelection(start: 0, duration: 2)
     /// 封面帧相对选区起点的偏移，让用户可以在一段动态里挑选最好看的一帧。
     @Published var coverOffset: Double = 0
     @Published var keepAudio = true
-    /// 用户是否手动改过倍速——改过之后就不再跟着默认值走。
-    @Published private(set) var isRetimed = false
 
     @Published private(set) var coverPreview: UIImage? = nil
     @Published private(set) var phase: Phase = .idle
@@ -61,6 +60,9 @@ final class EditorViewModel: ObservableObject {
     /// 封面帧在原始视频时间轴上的位置。
     var coverTime: Double {
         let upper = max(selection.start, selection.end - 0.02)
+        // 壁纸模式的封面帧固定在末尾：iOS 只播「关键帧之前」的那一小段，
+        // 关键帧放在末尾，整段 0.9167 秒才播得出来。这与引擎里的取法一致。
+        if selection.isWallpaper { return upper }
         return min(max(selection.start + coverOffset, selection.start), upper)
     }
 
@@ -68,15 +70,28 @@ final class EditorViewModel: ObservableObject {
         "\(Formatters.timecode(selection.start)) → \(Formatters.timecode(selection.end))"
     }
 
-    /// 本次输出的动态时长（已计入倍速）。
+    /// 本次输出的动态时长（已计入倍速；壁纸模式下就是钉死的 0.9167 秒）。
     var outputDuration: Double { selection.outputDuration }
 
-    /// 当前倍速下源片段的长度上限，时间轴手柄要按它来夹取。
+    /// 当前配置下源片段的长度上限，时间轴手柄要按它来夹取。
     var sourceLimit: Double { selection.sourceLimit }
+
+    /// 成品实际会用的倍速。分段变速取各段调和平均；壁纸模式由源长度反推。
+    var displaySpeed: Double { selection.displaySpeed }
+
+    var ramp: SpeedRamp? { selection.ramp }
+
+    var isWallpaper: Bool { selection.isWallpaper }
+
+    /// 非 1× 时才值得在画面上挂角标、在结果页列一行。
+    var isRetimed: Bool {
+        if selection.ramp != nil { return true }
+        return abs(selection.displaySpeed - 1.0) > 0.001
+    }
 
     /// 输出超过系统原生实况照片的 3 秒惯例时，给用户一句提醒。
     var exceedsNativeDuration: Bool {
-        outputDuration > ClipSelection.nativeDuration + 0.01
+        !selection.isWallpaper && outputDuration > ClipSelection.nativeDuration + 0.01
     }
 
     /// 「源 4.0 秒 → 输出 2.0 秒」这类摘要，编辑器和结果页共用同一套口径。
@@ -93,12 +108,11 @@ final class EditorViewModel: ObservableObject {
             info = loaded
             keepAudio = keepAudioByDefault && loaded.hasAudio
             selection = .centered(totalDuration: loaded.duration, preferred: defaultDuration)
-            isRetimed = false
             coverOffset = 0
 
             player.load(url: url)
             player.setMuted(!keepAudio)
-            player.setRate(1.0)
+            applyPreviewSpeed(selection)
             player.updateRange(selection.timeRange)
 
             refreshCover()
@@ -119,8 +133,8 @@ final class EditorViewModel: ObservableObject {
 
     func selectionDidChange() {
         let clamped = selection.clamped(totalDuration: info?.duration ?? selection.duration)
-        // 预览播放器跟着选区的倍速走，用户不用点生成就能看到快放/慢放的实际观感
-        player.setRate(Float(clamped.speed))
+        // 预览播放器跟着选区配置走，用户不用点生成就能看到快放/慢放的实际观感
+        applyPreviewSpeed(clamped)
         if clamped != selection {
             selection = clamped
             // 赋值会再次触发 onChange，交给下一轮跑完整流程，避免半套状态
@@ -131,39 +145,72 @@ final class EditorViewModel: ObservableObject {
         refreshCover()
     }
 
-    /// 调整播放倍速。**保持源片段不变**，让输出时长随之变化——
+    /// 把当前配置的速度交给预览播放器。
+    ///
+    /// 分段变速走曲线（时间观察器按进度改速率），其余情况走单一速率。
+    private func applyPreviewSpeed(_ value: ClipSelection) {
+        if let profile = value.previewSpeedProfile() {
+            player.setRateProfile(profile)
+        } else {
+            player.setRate(Float(value.displaySpeed))
+        }
+    }
+
+    /// 调整匀速倍速。**保持源片段不变**，让输出时长随之变化——
     /// 用户调倍速时心里想的是「这段动作太快/太慢」，而不是总时长。
+    ///
+    /// 这个动作会关掉分段变速：两者是「同一段时间轴怎么走」的两种形态，
+    /// 同时开着的话「显示的倍速」和「实际生效的倍速」会对不上。
     func setSpeed(_ value: Double) {
-        var next = selection
-        next.speed = ClipSelection.normalizedSpeed(value)
-        guard next.speed != selection.speed else { return }
-        isRetimed = abs(next.speed - 1.0) > 0.001
-        selection = next.clamped(totalDuration: info?.duration ?? next.duration)
+        apply(selection.withSpeed(value))
+    }
+
+    /// 开启或关闭分段变速。传 nil 表示回到匀速。
+    func setRamp(_ value: SpeedRamp?) {
+        apply(selection.withRamp(value))
+    }
+
+    /// 开关壁纸模式。
+    func setWallpaperMode(_ enabled: Bool) {
+        var next = selection.withWallpaper(enabled)
+        if enabled {
+            // 输出被钉死之后，源片段越长等效倍速越高，4 秒已经接近残影，
+            // 所以顺手把选区收进壁纸模式的上限里
+            next.duration = min(next.duration, ClipSelection.wallpaperMaxSourceDuration)
+        }
+        apply(next)
+    }
+
+    private func apply(_ next: ClipSelection) {
+        let clamped = next.clamped(totalDuration: info?.duration ?? next.duration)
+        guard clamped != selection else { return }
+        selection = clamped
+        applyPreviewSpeed(clamped)
         previewSelection()
     }
 
     /// 按目标输出时长反推源片段长度（起点不变，尽量往后取）。
     func setOutputDuration(_ target: Double) {
         guard let info else { return }
-        selection = selection.resized(toOutputDuration: target, totalDuration: info.duration)
-        previewSelection()
+        apply(selection.resized(toOutputDuration: target, totalDuration: info.duration))
     }
 
     /// 微调输出时长，步进 0.1 秒。
     func nudgeOutputDuration(by delta: Double) {
         guard let info else { return }
-        selection = selection.nudgingOutputDuration(by: delta, totalDuration: info.duration)
+        apply(selection.nudgingOutputDuration(by: delta, totalDuration: info.duration))
     }
 
-    /// 这个目标输出时长在当前倍速下是否够素材可截。
+    /// 这个目标输出时长在当前配置下是否够素材可截。
     func canReach(outputDuration target: Double, in info: VideoInfo) -> Bool {
-        target * ClipSelection.normalizedSpeed(selection.speed) <= info.duration + 0.05
+        target * selection.effectiveSpeed <= info.duration + 0.05
     }
 
     // MARK: - 预览
 
     /// 从头循环播放当前选区。
     func previewSelection() {
+        applyPreviewSpeed(selection)
         player.updateRange(selection.timeRange)
         player.replayRange()
     }
@@ -225,7 +272,7 @@ final class EditorViewModel: ObservableObject {
             self.lastBuilt = nil
         }
 
-        phase = .working("正在裁剪并转码视频…")
+        phase = .working(selection.isWallpaper ? "正在生成壁纸版实况照片…" : "正在裁剪并转码视频…")
 
         let job = selection.clamped(totalDuration: info.duration)
 
@@ -280,6 +327,7 @@ final class EditorViewModel: ObservableObject {
             savedToLibrary: saved,
             libraryIdentifier: identifier,
             stillFormatRaw: result.stillFormat.rawValue,
+            isWallpaper: result.isWallpaper,
             thumbnail: coverPreview?.jpegData(compressionQuality: 0.6)
         )
         context.insert(item)

@@ -12,6 +12,8 @@ struct ResultView: View {
     @State private var staticImage: UIImage?
     @State private var statusText = "正在准备预览…"
     @State private var exportedFolder: URL?
+    @State private var androidOutput: MotionPhotoExporter.Output?
+    @State private var isExportingAndroid = false
     @State private var exportError: String?
 
     var body: some View {
@@ -95,6 +97,21 @@ struct ResultView: View {
             LabeledContent("视频体积", value: result.fileSizeText)
             LabeledContent("静态主图", value: result.stillFormat.displayName)
             LabeledContent("动态视频", value: "HEVC (H.265) / MOV")
+
+            if result.isWallpaper {
+                LabeledContent("壁纸模式") {
+                    HStack(spacing: 4) {
+                        Text(result.wallpaperApplied ? "已处理" : "未完成")
+                            .font(.footnote)
+                        Image(systemName: result.wallpaperApplied
+                              ? "checkmark.seal.fill"
+                              : "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(result.wallpaperApplied ? .green : .orange)
+                    }
+                }
+            }
+
             LabeledContent("配对标识") {
                 HStack(spacing: 4) {
                     Text(result.identifier.prefix(8) + "…")
@@ -132,6 +149,14 @@ struct ResultView: View {
                 .foregroundStyle(result.identifierVerified ? Color.secondary : Color.orange)
                 .fixedSize(horizontal: false, vertical: true)
             }
+
+            // 壁纸后处理没做完时同样要说明，别让用户拿着一条不会动的壁纸去试
+            if let note = result.wallpaperNote {
+                Label(note, systemImage: "lock.iphone")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
     }
 
@@ -165,12 +190,53 @@ struct ResultView: View {
 
             Divider()
 
+            androidSection
+
+            Divider()
+
             Button {
                 dismiss()
             } label: {
                 Label("再做一个", systemImage: "arrow.counterclockwise")
             }
             .buttonStyle(.bordered)
+        }
+    }
+
+    /// 安卓动态照片是「单文件拼接」，和苹果的双文件完全不通用，所以单独一条出口。
+    @ViewBuilder
+    private var androidSection: some View {
+        Text("安卓手机认的是另一种格式：一张 JPEG 后面直接接一段 MP4，靠 JPEG 里的 XMP 记录视频的字节位置，文件名以 MP 结尾。和苹果这套双文件不通用，需要单独导出一份。")
+            .font(.footnote)
+            .foregroundStyle(.secondary)
+            .fixedSize(horizontal: false, vertical: true)
+
+        if let androidOutput {
+            ShareLink(item: androidOutput.url) {
+                Label("分享安卓动态照片", systemImage: "square.and.arrow.up")
+            }
+            .buttonStyle(.borderedProminent)
+
+            Text("已存到「文件 → 我的 iPhone → 实况录影 → \(androidOutput.url.lastPathComponent)」· 主图 \(Formatters.fileSize(androidOutput.jpegByteCount)) + 视频 \(Formatters.fileSize(androidOutput.videoByteCount))")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Button {
+                Task { await exportAndroid() }
+            } label: {
+                HStack(spacing: 8) {
+                    if isExportingAndroid {
+                        ProgressView()
+                    }
+                    Label(
+                        isExportingAndroid ? "正在拼接动态照片…" : "导出安卓动态照片",
+                        systemImage: "rectangle.stack.badge.plus"
+                    )
+                }
+            }
+            .buttonStyle(.bordered)
+            .disabled(isExportingAndroid)
         }
     }
 
@@ -183,6 +249,9 @@ struct ResultView: View {
         )
     }
 
+    /// 显式标 `@MainActor`：这是一个非隔离类型上的异步方法，
+    /// 不标的话第一次 `await` 之后会落到后台线程，再改 `@State` 就是在非主线程动界面状态。
+    @MainActor
     private func loadPreview() async {
         if staticImage == nil {
             staticImage = UIImage(contentsOfFile: result.photoURL.path)
@@ -221,6 +290,21 @@ struct ResultView: View {
     private func exportPair() {
         do {
             exportedFolder = try ExportService.exportPair(result, baseName: ExportService.makeBaseName())
+        } catch {
+            exportError = error.localizedDescription
+        }
+    }
+
+    /// 同上：拼接本身跑在后台，状态更新回到主线程。
+    @MainActor
+    private func exportAndroid() async {
+        isExportingAndroid = true
+        defer { isExportingAndroid = false }
+        do {
+            androidOutput = try await MotionPhotoExporter.export(
+                result,
+                baseName: ExportService.makeBaseName()
+            )
         } catch {
             exportError = error.localizedDescription
         }

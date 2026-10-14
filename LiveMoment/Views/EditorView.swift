@@ -21,6 +21,11 @@ struct EditorView: View {
         StillImageFormat(rawValue: preferredStillFormatRaw) ?? .heic
     }
 
+    /// 壁纸模式会强制用 HEIC——真实拍摄的实况照片就是 HEIC，判定壁纸资格时它最稳。
+    private var effectiveStillFormat: StillImageFormat {
+        viewModel.isWallpaper ? .heic : preferredStillFormat
+    }
+
     private var stillFormatBinding: Binding<StillImageFormat> {
         Binding(
             get: { preferredStillFormat },
@@ -96,13 +101,13 @@ struct EditorView: View {
             .buttonStyle(.plain)
             .opacity(viewModel.player.isPlaying ? 0.35 : 1)
 
-            // 倍速角标：非原速时一直挂在画面角上，避免用户忘了自己开了快放
-            if viewModel.isRetimed {
+            // 速度角标：非原速时一直挂在画面角上，避免用户忘了自己开了快放
+            if let badge = speedBadgeText {
                 VStack {
                     Spacer()
                     HStack {
                         Spacer()
-                        Text(Formatters.speed(viewModel.selection.speed) + (viewModel.selection.speed < 1 ? " 慢放" : " 快放"))
+                        Text(badge)
                             .font(.caption2.weight(.semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
@@ -122,10 +127,69 @@ struct EditorView: View {
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
+    private var speedBadgeText: String? {
+        if viewModel.isWallpaper { return "壁纸模式 · 0.92 秒" }
+        guard viewModel.isRetimed else { return nil }
+        if let ramp = viewModel.ramp {
+            return "\(Formatters.speed(ramp.startSpeed)) → \(Formatters.speed(ramp.endSpeed)) 渐变"
+        }
+        let speed = viewModel.selection.speed
+        return Formatters.speed(speed) + (speed < 1 ? " 慢放" : " 快放")
+    }
+
     // MARK: - 时长与速度
 
     private func timingSection(info: VideoInfo) -> some View {
         Card(title: "时长与速度", systemImage: "timer") {
+            if viewModel.isWallpaper {
+                wallpaperTiming
+            } else {
+                standardTiming(info: info)
+            }
+
+            Divider()
+
+            Button {
+                viewModel.previewSelection()
+            } label: {
+                Label("循环预览选区", systemImage: "play.circle")
+                    .font(.footnote)
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+
+    /// 壁纸模式：时长是钉死的，所以时长档位与速度档位都不适用，
+    /// 只留下「源片段多长」这一个自由度，等效倍速由它反推出来。
+    private var wallpaperTiming: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("壁纸模式", systemImage: "lock.iphone")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+
+            HStack(spacing: 8) {
+                metric(title: "源片段", value: Formatters.duration(viewModel.selection.duration))
+                Image(systemName: "arrow.right")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                metric(title: "输出时长", value: "0.9167 秒")
+                Spacer(minLength: 0)
+            }
+
+            Text("系统的壁纸判定要求动态恰好是 0.916667 秒（550/600）、视频时间基 600，并标出封面帧——这三件事壁纸模式都会做。时长钉死之后，能调的只剩源片段长度，它决定等效快慢：现在 \(Formatters.duration(viewModel.selection.duration)) 会被压成 0.9167 秒，约 \(Formatters.speed(viewModel.displaySpeed))。")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text("分段变速与时长档位在壁纸模式下不适用，切回普通模式即可使用。")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func standardTiming(info: VideoInfo) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             // 源片段 → 输出时长，一眼看清倍速到底压缩掉了多少
             HStack(spacing: 8) {
                 metric(title: "源片段", value: Formatters.duration(viewModel.selection.duration))
@@ -177,21 +241,28 @@ struct EditorView: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 6) {
-                Text("播放速度")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                Picker("播放速度", selection: speedBinding) {
-                    ForEach(ClipSelection.speedOptions, id: \.self) { option in
-                        Text(Formatters.speed(option)).tag(option)
+            // 匀速与分段变速是「同一段时间轴怎么走」的两种形态，所以二选一
+            if viewModel.ramp == nil {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("播放速度")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("播放速度", selection: speedBinding) {
+                        ForEach(ClipSelection.speedOptions, id: \.self) { option in
+                            Text(Formatters.speed(option)).tag(option)
+                        }
                     }
+                    .pickerStyle(.segmented)
+                    Text("调速度时保持源片段不变，输出时长跟着变：选 6 秒动作开 2× 快放，就能塞进 3 秒。")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .pickerStyle(.segmented)
-                Text("调速度时保持源片段不变，输出时长跟着变：选 6 秒动作开 2× 快放，就能塞进 3 秒。")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
             }
+
+            Divider()
+
+            rampControls
 
             if viewModel.exceedsNativeDuration {
                 Label(
@@ -202,54 +273,140 @@ struct EditorView: View {
                 .foregroundStyle(.orange)
                 .fixedSize(horizontal: false, vertical: true)
             }
-
-            Button {
-                viewModel.previewSelection()
-            } label: {
-                Label("循环预览选区", systemImage: "play.circle")
-                    .font(.footnote)
-            }
-            .buttonStyle(.bordered)
         }
+    }
+
+    // MARK: - 分段变速
+
+    @ViewBuilder
+    private var rampControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            OptionRow(
+                title: "分段变速",
+                subtitle: "同一段素材里先慢后快（或反过来），做节奏感"
+            ) {
+                Toggle("", isOn: rampEnabledBinding)
+                    .labelsHidden()
+            }
+
+            if let ramp = viewModel.ramp {
+                HStack(spacing: 8) {
+                    rampPresetButton("先慢后快", ramp: .slowToFast, current: ramp)
+                    rampPresetButton("先快后慢", ramp: .fastToSlow, current: ramp)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("起速")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("起速", selection: rampStartBinding) {
+                        ForEach(ClipSelection.speedOptions, id: \.self) { option in
+                            Text(Formatters.speed(option)).tag(option)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("终速")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    Picker("终速", selection: rampEndBinding) {
+                        ForEach(ClipSelection.speedOptions, id: \.self) { option in
+                            Text(Formatters.speed(option)).tag(option)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                }
+
+                Text("\(ramp.summary)，等效 \(Formatters.speed(ramp.effectiveSpeed))——各段倍速取调和平均，不是算术平均，否则时长会算短。预览会按同一条曲线实时变速。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func rampPresetButton(_ title: String, ramp: SpeedRamp, current: SpeedRamp) -> some View {
+        let selected = abs(current.startSpeed - ramp.startSpeed) < 0.001
+            && abs(current.endSpeed - ramp.endSpeed) < 0.001
+        return Button {
+            viewModel.setRamp(ramp)
+        } label: {
+            Text(title)
+                .font(.footnote.weight(.medium))
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 8)
+                .background(
+                    selected ? Color.accentColor : Color(.tertiarySystemFill),
+                    in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+                )
+                .foregroundStyle(selected ? Color.white : Color.primary)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: - 封面帧
 
+    @ViewBuilder
     private var coverSection: some View {
         Card(title: "封面帧", systemImage: "photo") {
-            HStack(alignment: .top, spacing: 14) {
-                Group {
-                    if let image = viewModel.coverPreview {
-                        Image(uiImage: image)
-                            .resizable()
-                            .aspectRatio(contentMode: .fit)
-                    } else {
-                        Color(.tertiarySystemFill)
-                    }
-                }
-                .frame(width: 96, height: 96)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
-
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("这张静图就是相册里看到的那一帧，拖动滑块挑最清楚的一张。")
+            if viewModel.isWallpaper {
+                HStack(alignment: .top, spacing: 14) {
+                    coverThumbnail
+                    Text("壁纸模式把封面帧固定在片段**最后一帧**。原因是 iOS 播放壁纸时只播「封面帧之前」的那一小段，封面放在末尾，整段 0.9167 秒才播得出来。")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)
+                }
+            } else {
+                HStack(alignment: .top, spacing: 14) {
+                    coverThumbnail
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("这张静图就是相册里看到的那一帧，拖动滑块挑最清楚的一张。")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
 
-                    Slider(value: $viewModel.coverOffset, in: 0...max(viewModel.selection.duration - 0.02, 0.02))
+                        Slider(value: $viewModel.coverOffset, in: 0...max(viewModel.selection.duration - 0.02, 0.02))
 
-                    Text("@ \(Formatters.timecode(viewModel.coverTime))")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(.secondary)
+                        Text("@ \(Formatters.timecode(viewModel.coverTime))")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
         }
+    }
+
+    private var coverThumbnail: some View {
+        Group {
+            if let image = viewModel.coverPreview {
+                Image(uiImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                Color(.tertiarySystemFill)
+            }
+        }
+        .frame(width: 96, height: 96)
+        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
     }
 
     // MARK: - 输出设置
 
     private func outputSection(info: VideoInfo) -> some View {
         Card(title: "输出设置", systemImage: "slider.horizontal.3") {
+            OptionRow(
+                title: "壁纸模式",
+                subtitle: "输出钉在 0.916667 秒、时间基 600，并标出封面帧，用于设成锁屏壁纸"
+            ) {
+                Toggle("", isOn: wallpaperBinding)
+                    .labelsHidden()
+            }
+
+            Divider()
+
             OptionRow(
                 title: "保留原声",
                 subtitle: info.hasAudio ? "关掉之后就是无声的实况照片" : "这段视频本来就没有音轨"
@@ -272,7 +429,7 @@ struct EditorView: View {
                     Text("封面图格式")
                         .font(.footnote)
                     Spacer(minLength: 0)
-                    Text(preferredStillFormat.displayName)
+                    Text(effectiveStillFormat.displayName)
                         .font(.footnote.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -282,8 +439,11 @@ struct EditorView: View {
                     }
                 }
                 .pickerStyle(.segmented)
+                .disabled(viewModel.isWallpaper)
 
-                Text(preferredStillFormat.tradeOff + "动态那一半固定是 HEVC / MOV，不受这个选项影响。")
+                Text(viewModel.isWallpaper
+                     ? "壁纸模式固定用 HEIC——真实拍摄的实况照片就是 HEIC，判定壁纸资格时它最稳。"
+                     : effectiveStillFormat.tradeOff + "动态那一半固定是 HEVC / MOV，不受这个选项影响。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -293,11 +453,17 @@ struct EditorView: View {
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 8) {
-                    SpecChip(systemImage: "photo", text: preferredStillFormat.displayName)
+                    SpecChip(systemImage: "photo", text: effectiveStillFormat.displayName)
                     SpecChip(systemImage: "video", text: "HEVC / MOV")
                     SpecChip(systemImage: "rectangle", text: info.resolutionText)
                     SpecChip(systemImage: "timer", text: Formatters.duration(viewModel.outputDuration))
-                    SpecChip(systemImage: "speedometer", text: Formatters.speed(viewModel.selection.speed))
+                    SpecChip(systemImage: "speedometer", text: Formatters.speed(viewModel.displaySpeed))
+                    if viewModel.isWallpaper {
+                        SpecChip(systemImage: "lock.iphone", text: "壁纸 550/600")
+                    }
+                    if let ramp = viewModel.ramp {
+                        SpecChip(systemImage: "waveform.path.ecg", text: "渐变 \(Formatters.speed(ramp.startSpeed))→\(Formatters.speed(ramp.endSpeed))")
+                    }
                 }
                 .padding(.vertical, 1)
             }
@@ -337,6 +503,48 @@ struct EditorView: View {
         )
     }
 
+    private var rampEnabledBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.ramp != nil },
+            set: { viewModel.setRamp($0 ? .slowToFast : nil) }
+        )
+    }
+
+    private var rampStartBinding: Binding<Double> {
+        Binding(
+            get: { viewModel.ramp?.startSpeed ?? 1.0 },
+            set: { value in
+                let current = viewModel.ramp ?? .slowToFast
+                viewModel.setRamp(SpeedRamp(
+                    startSpeed: value,
+                    endSpeed: current.endSpeed,
+                    segments: current.segments
+                ))
+            }
+        )
+    }
+
+    private var rampEndBinding: Binding<Double> {
+        Binding(
+            get: { viewModel.ramp?.endSpeed ?? 1.0 },
+            set: { value in
+                let current = viewModel.ramp ?? .slowToFast
+                viewModel.setRamp(SpeedRamp(
+                    startSpeed: current.startSpeed,
+                    endSpeed: value,
+                    segments: current.segments
+                ))
+            }
+        )
+    }
+
+    private var wallpaperBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.isWallpaper },
+            set: { viewModel.setWallpaperMode($0) }
+        )
+    }
+
     private func isCurrentPreset(_ preset: Double) -> Bool {
         abs(viewModel.outputDuration - preset) < 0.06
     }
@@ -368,11 +576,11 @@ struct EditorView: View {
             }
 
             PrimaryActionButton(
-                title: "生成实况照片",
+                title: viewModel.isWallpaper ? "生成壁纸版实况照片" : "生成实况照片",
                 systemImage: "sparkles",
                 isEnabled: viewModel.info != nil && !viewModel.phase.isWorking
             ) {
-                Task { await viewModel.build(stillFormat: preferredStillFormat, context: modelContext) }
+                Task { await viewModel.build(stillFormat: effectiveStillFormat, context: modelContext) }
             }
         }
         .padding(.horizontal, 16)
@@ -417,7 +625,7 @@ private struct TimelineSection: View {
             }
             .foregroundStyle(.secondary)
 
-            Text("上限 \(Formatters.duration(maxSourceDuration))（按当前 \(Formatters.speed(selection.speed)) 换算）· 拖动时画面会跟着跳，直接看边界落在哪一帧")
+            Text("上限 \(Formatters.duration(maxSourceDuration))\(selection.isWallpaper ? "（壁纸模式）" : "（按当前 \(Formatters.speed(selection.displaySpeed)) 换算）") · 拖动时画面会跟着跳，直接看边界落在哪一帧")
                 .font(.caption2)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
