@@ -36,7 +36,20 @@ bash scripts/build_ipa.sh          # 产物：build/LiveMoment-unsigned.ipa
 **没有 Mac：** 推到 GitHub，用 `.github/workflows/build-ios.yml` 在云端 macOS runner 上编译，  
 下载 artifact 得到的 .ipa 再用 Sideloadly 签名安装。完整步骤见 **[安装到手机指南.md](安装到手机指南.md)**。
 
-首次运行会请求「添加到照片库」权限，这是保存实况照片必须的；进「拍摄一段」时会另外请求相机与麦克风权限（不给也不影响从相册或文件导入）。
+想确认编出来的 .ipa 里到底有没有某个能力，用仓库里的核验脚本查一遍（只读，不解压到磁盘）：
+
+```bash
+python scripts/verify_ipa_features.py dist/livemoment-unsigned.ipa
+```
+
+它按三层判据做检查，判据本身也写在脚本开头：Swift **类型名**走 `__swift5_types`
+的类型元数据（Release 也 strip 不掉）、ObjC **选择器与类名**在 `__objc_methname`
+数据段里、**长字符串字面量**只有超 15 字节的才落到 `__TEXT,__cstring`。
+反过来三类探针写出来必然是空手而归，别踩：Swift 方法名（符号被 strip）、
+只读属性的 getter 名（代码只赋值时二进制里只有 `setXxx:`）、
+**从未被调用过的函数**（整个函数连同它的选择器一起被优化器剥掉）。
+
+首次运行会请求「添加到照片库」权限，这是保存实况照片必须的；进「拍摄一段」时会先请求相机与麦克风权限再开会话（不给也不影响从相册或文件导入）。相机权限被拒会明确提示去设置里开；麦克风被拒不拦人，只是录成无声、并在界面挂一句说明。
 
 ---
 
@@ -67,6 +80,7 @@ LiveMoment/
 ├── LiveMoment.xcodeproj/
 ├── project.yml                  # XcodeGen 备用工程描述
 ├── scripts/build_ipa.sh         # 编译 + 打包未签名 .ipa（Mac 与 CI 共用）
+├── scripts/verify_ipa_features.py   # 只读核验 .ipa 里各能力是否真的编进去了
 ├── .github/workflows/build-ios.yml  # 云端 macOS 编译工作流
 ├── 安装到手机指南.md             # 从零到装上 iPhone 的完整步骤
 └── LiveMoment/

@@ -16,6 +16,13 @@ jobs:
     runs-on: macos-15
     timeout-minutes: 45
 
+    # 连着推两次的话两个 run 会并行跑，最后都要往 dist/ 推 ipa，
+    # 后到的那个必然被 non-fast-forward 挡下——明明编译成功了却报失败。
+    # 同一个 ref 上串行执行，从根上消掉这个 race。
+    concurrency:
+      group: build-ipa-${{ github.ref }}
+      cancel-in-progress: false
+
     env:
       BOT_NAME: "github-actions[bot]"
       BOT_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
@@ -55,12 +62,6 @@ jobs:
           bash scripts/build_ipa.sh
           ls -la build/*.ipa
 
-      - name: 编译日志（失败时留档）
-        if: failure()
-        run: |
-          echo "===== xcodebuild.log 末尾 200 行 ====="
-          tail -n 200 build/xcodebuild.log || true
-
       - name: 上传 IPA 为构建产物
         if: steps.direct.outcome == 'success' || steps.fallback.outcome == 'success'
         uses: actions/upload-artifact@v4
@@ -71,8 +72,13 @@ jobs:
 
       # 把 ipa 直接放进仓库，手机上不好操作的话点一下就能下载，
       # 不用去 Actions 页面下 zip 再解压。[skip ci] 防止递归触发构建。
+      #
+      # 即使有 concurrency 串行化，远端仍可能被别人推走，所以推之前先 rebase 到最新，
+      # 失败重试三次。三次都没推上去也不让整个 job 失败——ipa 作为 artifact 已经单独传了，
+      # 编译结果是有效的，这里只留一句警告。
       - name: 发布 IPA 到 dist/
         if: steps.direct.outcome == 'success' || steps.fallback.outcome == 'success'
+        continue-on-error: true
         run: |
           mkdir -p dist
           cp build/*.ipa dist/livemoment-unsigned.ipa
@@ -82,12 +88,25 @@ jobs:
           git add -f dist/livemoment-unsigned.ipa
           if git diff --cached --quiet; then
             echo "ipa 没有变化，跳过提交"
-          else
-            git commit -q -m "CI: 发布未签名 ipa 到 dist/ [skip ci]"
-            git pull --rebase origin "${GITHUB_REF_NAME}"
-            git push
-            echo "已发布"
+            exit 0
           fi
+          git commit -q -m "CI: 发布未签名 ipa 到 dist/ [skip ci]"
+
+          for attempt in 1 2 3; do
+            git fetch origin "${GITHUB_REF_NAME}"
+            # 落后了就把自己的提交挪到最新远端之上；真冲突就放弃这次提交，下轮再来
+            if ! git rebase "origin/${GITHUB_REF_NAME}"; then
+              git rebase --abort || true
+              echo "::warning::dist/ 与远端冲突，本次不发布 ipa（artifact 已上传）"
+              exit 0
+            fi
+            if git push origin "HEAD:${GITHUB_REF_NAME}"; then
+              echo "已发布（第 ${attempt} 次尝试）"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "::warning::三次都没能把 ipa 推到 dist/，artifact 已上传，可直接从 Actions 页面下载"
 
       # 日志下载需要凭据（公开仓库的 jobs/{id}/logs 也要 403），所以失败时把日志
       # 强推到独立的 ci-logs 分支：强推不受历史分叉影响，而且不登录就能用
@@ -119,5 +138,5 @@ jobs:
       - name: 两次都没编过就报错退出
         if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
         run: |
-          echo "::error::两次编译都失败了，完整日志见仓库根目录 build-error.log"
+          echo "::error::两次编译都失败了，日志见 ci-logs 分支的 build-error.log（raw 直链无需登录）"
           exit 1
