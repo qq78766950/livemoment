@@ -6,7 +6,7 @@ on:
   push:
     branches: [main, master]
 
-# 允许失败时把日志提交回仓库
+# 允许把日志 / ipa 提交回仓库
 permissions:
   contents: write
 
@@ -15,6 +15,10 @@ jobs:
     name: 云端编译（macOS runner）
     runs-on: macos-15
     timeout-minutes: 45
+
+    env:
+      BOT_NAME: "github-actions[bot]"
+      BOT_EMAIL: "41898282+github-actions[bot]@users.noreply.github.com"
 
     steps:
       - name: 检出代码
@@ -54,7 +58,7 @@ jobs:
           echo "===== xcodebuild.log 末尾 200 行 ====="
           tail -n 200 build/xcodebuild.log || true
 
-      - name: 上传 IPA
+      - name: 上传 IPA 为构建产物
         if: steps.direct.outcome == 'success' || steps.fallback.outcome == 'success'
         uses: actions/upload-artifact@v4
         with:
@@ -62,11 +66,30 @@ jobs:
           path: build/*.ipa
           retention-days: 30
 
-      # 日志下载需要凭据，所以失败时直接把日志提交回仓库，
+      # 把 ipa 直接放进仓库，手机上不好操作的话点一下就能下载，
+      # 不用去 Actions 页面下 zip 再解压。[skip ci] 防止递归触发构建。
+      - name: 发布 IPA 到 dist/
+        if: steps.direct.outcome == 'success' || steps.fallback.outcome == 'success'
+        run: |
+          mkdir -p dist
+          cp build/*.ipa dist/livemoment-unsigned.ipa
+          ls -la dist/
+          git config user.name "$BOT_NAME"
+          git config user.email "$BOT_EMAIL"
+          git add -f dist/livemoment-unsigned.ipa
+          if git diff --cached --quiet; then
+            echo "ipa 没有变化，跳过提交"
+          else
+            git commit -q -m "CI: 发布未签名 ipa 到 dist/ [skip ci]"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
+            git push
+            echo "已发布"
+          fi
+
+      # 日志下载需要凭据，所以失败时把日志提交回仓库，
       # 这样不登录也能通过 raw.githubusercontent.com 读到。
-      # [skip ci] 防止这次 push 再触发新一轮构建造成死循环。
       - name: 把编译日志提交回仓库
-        if: always()
+        if: steps.direct.outcome == 'failure' && steps.fallback.outcome == 'failure'
         run: |
           if [ -f build/xcodebuild.log ]; then
             tail -n 600 build/xcodebuild.log > build-error.log
@@ -74,19 +97,17 @@ jobs:
             {
               echo "build/xcodebuild.log 不存在，build 目录内容："
               ls -la build 2>&1 || true
-              echo "--- 工作目录 ---"
-              ls -la
             } > build-error.log
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "$BOT_NAME"
+          git config user.email "$BOT_EMAIL"
           git add build-error.log
           if git diff --cached --quiet; then
             echo "日志没有变化，跳过提交"
           else
             git commit -q -m "CI: 提交编译日志供诊断 [skip ci]"
+            git pull --rebase origin "${GITHUB_REF_NAME}"
             git push
-            echo "已提交日志"
           fi
 
       - name: 两次都没编过就报错退出
